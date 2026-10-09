@@ -1,31 +1,40 @@
-// Pure Leitner scheduler tuned for a ~14-day horizon. No I/O, no Date.now(): the caller passes `today`
-// as 'YYYY-MM-DD' and a random source, so everything here is unit-testable and deterministic.
+// Pure Leitner scheduler with open-ended intervals (no exam date). No I/O, no Date.now(): the caller passes
+// `today` as 'YYYY-MM-DD' and a random source, so everything here is unit-testable and deterministic.
+import type { Tense } from '../content/schema'
 
-export type Box = 1 | 2 | 3 | 4 | 5
-/** Self-grade: «Не знаю» → again, «С трудом» → hard, «Знаю» → good. */
+export type Box = 1 | 2 | 3 | 4 | 5 | 6 | 7
+/** Self-grade: «Again» → again, «Hard» → hard, «Good» → good. */
 export type Grade = 'again' | 'hard' | 'good'
 
-export interface CardProgress {
+/** Box cadence in days. Box 7 = mastered: it still comes back, every 60 days. */
+export const BOX_INTERVAL_DAYS: Record<Box, number> = { 1: 0, 2: 1, 3: 3, 4: 7, 5: 14, 6: 30, 7: 60 }
+export const MASTERED_BOX: Box = 7
+
+export interface ItemProgress {
   box: Box
-  /** next review date, null once the card is in box 5 («усвоено») */
-  due: string | null
+  /** next review date; always set */
+  due: string
   introduced: string
   lastReviewed: string | null
   lastGrade: Grade | null
   reps: number
   lapses: number
 }
-export type ProgressMap = Record<string, CardProgress>
+export type ProgressMap = Record<string, ItemProgress>
 
-export interface SchedCard {
+export type ItemKind = 'vocab' | 'grid' | 'exercise' | 'prep'
+/** One schedule item: a vocabulary entry, a verb × tense grid, a book exercise or a preposition paradigm. */
+export interface SchedItem {
   id: string
-  block: 1 | 2 | 3 | 4
+  kind: ItemKind
+  unit: number
+  /** interleaving key, e.g. `u01:verb`, `piel:future`, `u04:ex` */
   cluster: string
-  examNumber: number
+  /** book order inside the unit */
+  order: number
+  /** tenses the item drills (a grid has one; an exercise the tenses of its tagged items); absent = always on */
+  tenses?: Tense[]
 }
-
-/** Box cadence: 1 = every session, 2 = next day, 3 = +3 days, 4 = +7 days, 5 = final review only. */
-export const BOX_INTERVAL_DAYS: Record<Box, number | null> = { 1: 0, 2: 1, 3: 3, 4: 7, 5: null }
 
 export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`)
@@ -45,54 +54,28 @@ export function toDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export function applyGrade(prev: CardProgress | undefined, grade: Grade, today: string): CardProgress {
-  const base: CardProgress = prev ?? {
-    box: 1,
-    due: today,
-    introduced: today,
-    lastReviewed: null,
-    lastGrade: null,
-    reps: 0,
-    lapses: 0,
-  }
+export function applyGrade(prev: ItemProgress | undefined, grade: Grade, today: string): ItemProgress {
+  const base: ItemProgress = prev ?? { box: 1, due: today, introduced: today, lastReviewed: null, lastGrade: null, reps: 0, lapses: 0 }
   let box: Box = base.box
   let lapses = base.lapses
   if (grade === 'again') {
     box = 1
     lapses += 1
   } else if (grade === 'good') {
-    box = Math.min(5, box + 1) as Box
+    box = Math.min(MASTERED_BOX, box + 1) as Box
   }
-  const interval = BOX_INTERVAL_DAYS[box]
-  return {
-    ...base,
-    box,
-    due: interval === null ? null : addDays(today, interval),
-    lastReviewed: today,
-    lastGrade: grade,
-    reps: base.reps + 1,
-    lapses,
-  }
+  return { ...base, box, due: addDays(today, BOX_INTERVAL_DAYS[box]), lastReviewed: today, lastGrade: grade, reps: base.reps + 1, lapses }
 }
 
-export function isDue(p: CardProgress, today: string): boolean {
-  return p.box < 5 && p.due !== null && p.due <= today
-}
+export const isDue = (p: ItemProgress, today: string): boolean => p.due <= today
 
-/** New cards per day so that everything is introduced ~4 days before the exam. */
-export function newCardQuota(remainingNew: number, daysToExam: number): number {
-  if (remainingNew <= 0) return 0
-  return Math.ceil(remainingNew / Math.max(1, daysToExam - 4))
-}
-
-/** Round-robin across clusters so consecutive cards come from different topics. */
-export function interleaveByCluster<T extends { cluster: string; block: number }>(items: T[]): T[] {
+/** Round-robin across clusters so consecutive items come from different places. */
+export function interleaveByCluster<T extends { cluster: string }>(items: T[]): T[] {
   const groups = new Map<string, T[]>()
   for (const it of items) {
-    const key = `${it.block}:${it.cluster}`
-    const g = groups.get(key)
+    const g = groups.get(it.cluster)
     if (g) g.push(it)
-    else groups.set(key, [it])
+    else groups.set(it.cluster, [it])
   }
   const lists = [...groups.values()]
   const out: T[] = []
@@ -110,114 +93,88 @@ export function interleaveByCluster<T extends { cluster: string; block: number }
   return out
 }
 
-const byExamOrder = (a: SchedCard, b: SchedCard) => a.block - b.block || a.examNumber - b.examNumber
+const byBookOrder = (a: SchedItem, b: SchedItem) => a.unit - b.unit || a.order - b.order
 
 export interface TodayQueueInput {
-  cards: SchedCard[]
+  items: SchedItem[]
   progress: ProgressMap
   today: string
-  daysToExam: number
-  /** override the computed quota (settings / tests) */
-  newLimit?: number
+  /** new items allowed today (Settings, default 10) */
+  newLimit: number
 }
 
-/** «Сегодня»: due reviews first (lowest box first), then today's share of new cards; both cluster-interleaved. */
+/** «Today»: due reviews first (lowest box first), then today's new items in book order; both cluster-interleaved. */
 export function buildTodayQueue(i: TodayQueueInput): string[] {
-  const due = i.cards
+  const due = i.items
     .filter((c) => {
       const p = i.progress[c.id]
       return p !== undefined && isDue(p, i.today)
     })
-    .sort((a, b) => i.progress[a.id]!.box - i.progress[b.id]!.box || (i.progress[a.id]!.due ?? '').localeCompare(i.progress[b.id]!.due ?? '') || byExamOrder(a, b))
-  const fresh = i.cards.filter((c) => i.progress[c.id] === undefined).sort(byExamOrder)
-  const quota = i.newLimit ?? newCardQuota(fresh.length, i.daysToExam)
-  return [...interleaveByCluster(due), ...interleaveByCluster(fresh).slice(0, quota)].map((c) => c.id)
+    .sort((a, b) => i.progress[a.id]!.box - i.progress[b.id]!.box || i.progress[a.id]!.due.localeCompare(i.progress[b.id]!.due) || byBookOrder(a, b))
+  const fresh = i.items.filter((c) => i.progress[c.id] === undefined).sort(byBookOrder)
+  return [...interleaveByCluster(due), ...interleaveByCluster(fresh).slice(0, Math.max(0, i.newLimit))].map((c) => c.id)
 }
 
-/** «Блок / тема»: everything matching `pick`; due and box-1 cards first, then unseen, then the rest, in exam order. */
-export function buildTopicQueue(cards: SchedCard[], progress: ProgressMap, today: string, pick: (c: SchedCard) => boolean): string[] {
-  const mine = cards.filter(pick).sort(byExamOrder)
-  const rank = (c: SchedCard) => {
+/** «Unit / topic»: everything matching `pick`; due and box-1 items first, then unseen, then the rest, in book order. */
+export function buildTopicQueue(items: SchedItem[], progress: ProgressMap, today: string, pick: (c: SchedItem) => boolean): string[] {
+  const mine = items.filter(pick).sort(byBookOrder)
+  const rank = (c: SchedItem) => {
     const p = progress[c.id]
     if (!p) return 1
     if (isDue(p, today) || p.box === 1) return 0
     return 2
   }
-  return mine.sort((a, b) => rank(a) - rank(b) || byExamOrder(a, b)).map((c) => c.id)
+  return mine.sort((a, b) => rank(a) - rank(b) || byBookOrder(a, b)).map((c) => c.id)
 }
 
-/** «Слабые места»: seen cards still in boxes 1–2. */
-export function buildWeakQueue(cards: SchedCard[], progress: ProgressMap): string[] {
-  return interleaveByCluster(cards.filter((c) => (progress[c.id]?.box ?? 9) <= 2)).map((c) => c.id)
+/** «Weak spots»: seen items still in boxes 1–2. */
+export function buildWeakQueue(items: SchedItem[], progress: ProgressMap): string[] {
+  return interleaveByCluster(items.filter((c) => (progress[c.id]?.box ?? 9) <= 2)).map((c) => c.id)
 }
 
-/** «Повтор перед экзаменом»: every card seen so far, weakest box first, no new cards. */
-export function buildFinalReviewQueue(cards: SchedCard[], progress: ProgressMap): string[] {
-  const seen = cards.filter((c) => progress[c.id] !== undefined)
-  const out: string[] = []
-  for (const box of [1, 2, 3, 4, 5] as Box[]) out.push(...interleaveByCluster(seen.filter((c) => progress[c.id]!.box === box)).map((c) => c.id))
-  return out
-}
-
-/** «Ещё N новых»: the next unseen cards beyond today's quota, cluster-interleaved. */
-export function buildExtraNewQueue(cards: SchedCard[], progress: ProgressMap, n: number): string[] {
-  const fresh = cards.filter((c) => progress[c.id] === undefined).sort(byExamOrder)
+/** «N more new»: the next unseen items beyond today's limit, cluster-interleaved. */
+export function buildExtraNewQueue(items: SchedItem[], progress: ProgressMap, n: number): string[] {
+  const fresh = items.filter((c) => progress[c.id] === undefined).sort(byBookOrder)
   return interleaveByCluster(fresh).slice(0, n).map((c) => c.id)
 }
 
-/** «Билет»: 3 × block 1 from different clusters + 1 each of blocks 2, 3, 4. */
-export function buildTicket(cards: SchedCard[], rand: () => number): string[] {
-  const pickOne = (pool: SchedCard[]): SchedCard | undefined => pool[Math.floor(rand() * pool.length)]
-  const out: SchedCard[] = []
-  const usedClusters = new Set<string>()
-  for (let k = 0; k < 3; k++) {
-    const pool = cards.filter((c) => c.block === 1 && !usedClusters.has(c.cluster))
-    const c = pickOne(pool.length ? pool : cards.filter((c) => c.block === 1))
-    if (!c) break
-    usedClusters.add(c.cluster)
-    out.push(c)
-  }
-  for (const block of [2, 3, 4] as const) {
-    const c = pickOne(cards.filter((c) => c.block === block))
-    if (c) out.push(c)
-  }
-  return out.map((c) => c.id)
-}
-
 export interface ClusterStat {
-  block: 1 | 2 | 3 | 4
   cluster: string
+  unit: number
+  kind: ItemKind
   total: number
   unseen: number
+  /** boxes 1–2 */
   weak: number
+  /** boxes 3–6 */
   learning: number
-  learned: number
+  /** box 7 */
+  mastered: number
 }
 
-export function clusterStats(cards: SchedCard[], progress: ProgressMap): ClusterStat[] {
+export function clusterStats(items: SchedItem[], progress: ProgressMap): ClusterStat[] {
   const map = new Map<string, ClusterStat>()
-  for (const c of cards) {
-    const key = `${c.block}:${c.cluster}`
-    let s = map.get(key)
+  for (const c of items) {
+    let s = map.get(c.cluster)
     if (!s) {
-      s = { block: c.block, cluster: c.cluster, total: 0, unseen: 0, weak: 0, learning: 0, learned: 0 }
-      map.set(key, s)
+      s = { cluster: c.cluster, unit: c.unit, kind: c.kind, total: 0, unseen: 0, weak: 0, learning: 0, mastered: 0 }
+      map.set(c.cluster, s)
     }
     s.total++
     const p = progress[c.id]
     if (!p) s.unseen++
     else if (p.box <= 2) s.weak++
-    else if (p.box <= 4) s.learning++
-    else s.learned++
+    else if (p.box < MASTERED_BOX) s.learning++
+    else s.mastered++
   }
-  return [...map.values()].sort((a, b) => a.block - b.block || a.cluster.localeCompare(b.cluster))
+  return [...map.values()].sort((a, b) => a.unit - b.unit || a.cluster.localeCompare(b.cluster))
 }
 
 // ---------------------------------------------------------------- in-session requeue
 export interface Session {
   queue: string[]
   index: number
-  /** cards that failed at least once this session: they must pass twice before leaving */
+  /** items that failed at least once this session: they must pass twice before leaving */
   failed: Record<string, true>
   passes: Record<string, number>
   done: number
@@ -231,7 +188,7 @@ export const currentCard = (s: Session): string | null => s.queue[s.index] ?? nu
 export const isFinished = (s: Session): boolean => s.index >= s.queue.length
 export const remaining = (s: Session): number => Math.max(0, s.queue.length - s.index)
 
-/** A failed card comes back after 4–6 other cards and must then be passed twice in a row. */
+/** A failed item comes back after 4–6 other items and must then be passed twice in a row. */
 export function gradeInSession(s: Session, grade: Grade, rand: () => number): Session {
   const id = s.queue[s.index]
   if (id === undefined) return s

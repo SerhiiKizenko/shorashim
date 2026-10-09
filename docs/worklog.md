@@ -26,3 +26,31 @@ Mac · English UI, Russian glosses from the book.
   Photos of the teacher's sheets are in `MATERIALS_DIR/teacher/` (2 files, in `inventory.json`).
 - The kickoff now defines "whole book = done" as a coverage checklist (see `<session_plan>`).
 - Name: Shorashim / Ivrit Bet / Atid — confirm at the start of session 2.
+
+## 2026-10-09 — session 2 (fork, Hebrew core, shell deploy, first content)
+
+**Done**
+- Names confirmed by Serhii: repo `shorashim`, app «Shorashim», palette reused. Forked muscle-memory (rsync, no
+  history), renamed, first commit.
+- Engine: `src/content/schema.ts` (records of MAPPING §4), `src/engine/answer.ts` (normaliser + checker, 20
+  tests), `src/engine/scheduler.ts` (boxes 1–7, intervals 0/1/3/7/14/30/60, new/day setting),
+  `src/engine/items.ts` (bundle → items, tense focus; the "off and on keeps progress" test), stores.
+- UI (English): Lock, Onboarding, Home with the tense-focus chips, Study (vocab / grid / exercise drills),
+  ParadigmGrid in the teacher's column order, Verbs (grid · one form · which form?), Units, Unit, Grammar topic,
+  Listen (decrypt-on-play), Weak spots, Settings, Help (Hebrew keyboard on iOS/macOS).
+- Pipeline: `render` (pages + 2× column crops), `transcription` schema, `diff-pass`, `import-book` (+ report),
+  `piel-future` (p.54 pattern as data, tested), `validate`, `encrypt` (bundle + audio), `find`, `apply-verified`,
+  `test-bundle` (לכתוב grid + 1 s WAV track).
+- Playwright WebKit iPhone smoke green: grid typed in Hebrew, due grid first in Today, audio Blob URL, reload.
+- Docs: `CLAUDE.md`, `docs/decisions.md`, `docs/CONTENT-RULES.md`.
+
+**Installed / created**: `@fontsource-variable/noto-sans-hebrew`; `sources/pages`, `sources/transcribed`,
+`src/ui/drills`, `public/data-test`.
+
+**Assumptions (stated, not asked)**: answers normalised with NFKC (superset of the kickoff's NFC); the unpointed
+p.54 verb list gets standard pi'el pointing flagged `generated` for G1; grid/exercise grade thresholds 0 / ≤ 2
+/ more first-try mistakes.
+
+**Findings**: `rsync --exclude content` also drops `src/content/` (same trap as the gitignore lesson) — copy it
+back; the kickoff's secrets grep matches `src/content/`, use `^content/|^sources/`. The unit-4 answer key is
+p.192 (2.1 and 2.2 both there).

@@ -31,8 +31,17 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App shell + encrypted bundles are precached so the trainer works offline.
+        // App shell + the encrypted text bundle are precached so the trainer works offline.
         globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}', 'data/*.enc'],
+        globIgnores: ['**/node_modules/**/*', 'data/audio/**', 'data-test/**'],
+        runtimeCaching: [
+          {
+            // one encrypted file per track, ~40 MB in all: cached after the first play, never precached
+            urlPattern: /\/data(-test)?\/audio\/[^/]+\.enc$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'audio', expiration: { maxEntries: 60 }, cacheableResponse: { statuses: [0, 200] } },
+          },
+        ],
         maximumFileSizeToCacheInBytes: 60 * 1024 * 1024,
         navigateFallback: 'index.html',
       },

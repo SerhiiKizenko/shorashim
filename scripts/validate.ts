@@ -1,81 +1,105 @@
-// Validates the plaintext card bank before encryption. Exits 1 on errors. Run: pnpm validate
-import { readdir, stat } from 'node:fs/promises'
-import { join } from 'node:path'
-import { CardSchema, EXPECTED_COUNTS, UNSUPPORTED_MARK, type Block, type Card } from '../src/content/schema'
-import { loadCards } from './lib/cards'
-import { IMAGES_DIR } from './lib/paths'
+// Validates the plaintext content before encryption. Exits 1 on errors. Run: pnpm validate
+import { BundleSchema, EXPECTED_COUNTS, TENSE_CELLS, type Bundle, type BundleInput, type Tense } from '../src/content/schema'
+import { loadContent, walkStrings } from './lib/content'
 import { fmtBytes } from './lib/run'
 
 export const TEXT_BUDGET = 3 * 1024 * 1024
-export const IMAGES_BUDGET = 40 * 1024 * 1024
 
+export interface UnitStat {
+  vocab: { total: number; checked: number; byPos: Record<string, number> }
+  verbs: number
+  grammar: number
+  exercises: number
+  texts: number
+  proverbs: number
+}
 export interface ValidationResult {
   errors: string[]
   warnings: string[]
-  cards: Card[]
-  stats: Record<Block, { total: number; checked: number; draft: number; stubs: number }>
+  bundle: Bundle
+  stats: Record<number, UnitStat>
 }
 
-export async function validateCards(raw: unknown[]): Promise<ValidationResult> {
+/** Fields where a question mark is part of the text, not an unreadable spot. */
+const QUESTION_OK = /(^|\.)(prompt|instructionHe|instructionEn|explanationRu|explanationEn|teacherNote|titleHe|titleEn|notes|he|ru|en|raw|paragraphs\[\d+\])$/
+
+export function validateContent(raw: BundleInput): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
-  const cards: Card[] = []
-  for (const [i, r] of raw.entries()) {
-    const p = CardSchema.safeParse(r)
-    if (p.success) cards.push(p.data)
-    else errors.push(`card #${i} (${(r as { id?: string })?.id ?? '?'}): ${p.error.issues.map((x) => `${x.path.join('.')} ${x.message}`).join('; ')}`)
+  const parsed = BundleSchema.safeParse(raw)
+  if (!parsed.success) {
+    for (const i of parsed.error.issues) errors.push(`${i.path.join('.')}: ${i.message}`)
+    return { errors, warnings, bundle: BundleSchema.parse({ version: 1, units: [], vocab: [], verbs: [], grammar: [], exercises: [], texts: [], proverbs: [], prepositions: [], audio: [] }), stats: {} }
   }
+  const b = parsed.data
+  const all = [...b.vocab, ...b.verbs, ...b.grammar, ...b.exercises, ...b.texts, ...b.proverbs, ...b.prepositions]
 
   const ids = new Set<string>()
-  for (const c of cards) {
-    if (ids.has(c.id)) errors.push(`${c.id}: duplicate id`)
-    ids.add(c.id)
-    if (c.sources.length === 0) errors.push(`${c.id}: no sources`)
-    if (/\bTODO\b/.test(c.answer) || /\bTODO\b/.test(c.prompt)) errors.push(`${c.id}: contains TODO`)
-    if (c.reviewStatus === 'checked') {
-      if (c.sources.some((s) => s.page === null)) errors.push(`${c.id}: checked but a source has no page`)
-      if (c.answer.includes(UNSUPPORTED_MARK) && !c.flags.includes('unsupported')) errors.push(`${c.id}: checked with unsupported mark but no 'unsupported' flag`)
-      if (!c.examLine) warnings.push(`${c.id}: checked without «Как сказать на экзамене»`)
+  for (const r of all) {
+    if (ids.has(r.id)) errors.push(`${r.id}: duplicate id`)
+    ids.add(r.id)
+    for (const [path, s] of walkStrings(r)) {
+      if (s !== s.normalize('NFC')) errors.push(`${r.id}: ${path} is not NFC`)
+      if (r.reviewStatus === 'checked' && s.includes('?') && !QUESTION_OK.test(path)) errors.push(`${r.id}: checked but ${path} contains "?"`)
     }
+    if (r.reviewStatus === 'checked' && r.flags.includes('unreadable')) errors.push(`${r.id}: checked but flagged unreadable`)
   }
 
-  // Coverage: every exam number present once per block (sub-cards share the number).
-  const stats = {} as ValidationResult['stats']
-  for (const block of [1, 2, 3, 4] as Block[]) {
-    const mine = cards.filter((c) => c.block === block)
-    const nums = new Set(mine.map((c) => c.examNumber))
-    const missing: number[] = []
-    for (let n = 1; n <= EXPECTED_COUNTS[block]; n++) if (!nums.has(n)) missing.push(n)
-    if (missing.length) errors.push(`block ${block}: missing exam numbers ${missing.join(', ')}`)
-    const extra = [...nums].filter((n) => n > EXPECTED_COUNTS[block])
-    if (extra.length) errors.push(`block ${block}: unexpected exam numbers ${extra.join(', ')}`)
-    const top = mine.filter((c) => !c.subNumber)
-    const dup = top.map((c) => c.examNumber).filter((n, i, a) => a.indexOf(n) !== i)
-    if (dup.length) errors.push(`block ${block}: duplicated top-level numbers ${[...new Set(dup)].join(', ')}`)
-    stats[block] = {
-      total: mine.length,
-      checked: mine.filter((c) => c.reviewStatus === 'checked').length,
-      draft: mine.filter((c) => c.reviewStatus === 'draft').length,
-      stubs: mine.filter((c) => c.flags.includes('stub')).length,
+  const verbIds = new Set(b.verbs.map((v) => v.id))
+  const exerciseIds = new Set(b.exercises.map((e) => e.id))
+  const tracks = new Set(b.audio.map((a) => a.track))
+  for (const v of b.vocab) if (v.verbId && !verbIds.has(v.verbId)) errors.push(`${v.id}: verbId ${v.verbId} not found`)
+  for (const v of b.verbs) {
+    for (const tense of Object.keys(v.forms) as Tense[]) {
+      const cells = v.forms[tense]
+      if (!cells) continue
+      const allowed = TENSE_CELLS[tense] as readonly string[]
+      for (const k of Object.keys(cells)) if (!allowed.includes(k)) errors.push(`${v.id}: ${tense} has unknown cell ${k}`)
+      if (v.reviewStatus === 'checked') for (const k of allowed) if (!cells[k]) errors.push(`${v.id}: checked but ${tense}.${k} missing`)
+    }
+    for (const c of v.checkedAgainst) for (const k of c.cells) if (!v.forms[c.tense]?.[k]) errors.push(`${v.id}: checkedAgainst lists ${c.tense}.${k} which has no cell`)
+  }
+  for (const g of b.grammar) {
+    for (const id of g.verbIds) if (!verbIds.has(id)) errors.push(`${g.id}: verb ${id} not found`)
+    for (const id of g.exerciseIds) if (!exerciseIds.has(id)) errors.push(`${g.id}: exercise ${id} not found`)
+    if (g.audioTrack !== undefined && !tracks.has(g.audioTrack)) warnings.push(`${g.id}: audio track ${g.audioTrack} not in the bundle`)
+  }
+  for (const e of b.exercises) {
+    if (e.gradable) for (const it of e.items) if (it.answers.every((a) => a === '?' || !a.trim())) {
+      if (e.reviewStatus === 'checked') errors.push(`${e.id}: checked but item ${it.label} has no answer`)
+      else warnings.push(`${e.id}: item ${it.label} has no answer yet`)
     }
   }
+  for (const t of b.texts) if (t.audioTrack !== undefined && !tracks.has(t.audioTrack)) warnings.push(`${t.id}: audio track ${t.audioTrack} not in the bundle`)
 
-  // Images referenced must exist; budgets.
-  let imageBytes = 0
-  const present = new Set(await readdir(IMAGES_DIR).catch(() => [] as string[]))
-  for (const c of cards) for (const img of c.images) if (!present.has(img)) errors.push(`${c.id}: image ${img} not in content/images`)
-  for (const f of present) imageBytes += (await stat(join(IMAGES_DIR, f))).size
-  const textBytes = Buffer.byteLength(JSON.stringify(cards))
+  const stats: Record<number, UnitStat> = {}
+  for (const u of b.units) stats[u.unit] = { vocab: { total: 0, checked: 0, byPos: {} }, verbs: 0, grammar: 0, exercises: 0, texts: 0, proverbs: 0 }
+  const unitStat = (n: number) => (stats[n] ??= { vocab: { total: 0, checked: 0, byPos: {} }, verbs: 0, grammar: 0, exercises: 0, texts: 0, proverbs: 0 })
+  for (const v of b.vocab) {
+    const s = unitStat(v.unit)
+    s.vocab.total++
+    if (v.reviewStatus === 'checked') s.vocab.checked++
+    s.vocab.byPos[v.pos] = (s.vocab.byPos[v.pos] ?? 0) + 1
+  }
+  for (const v of b.verbs) unitStat(v.unit).verbs++
+  for (const g of b.grammar) unitStat(g.unit).grammar++
+  for (const e of b.exercises) unitStat(e.unit).exercises++
+  for (const t of b.texts) unitStat(t.unit).texts++
+  for (const p of b.proverbs) unitStat(p.unit).proverbs++
+  for (const [unit, exp] of Object.entries(EXPECTED_COUNTS)) {
+    const have = stats[Number(unit)]?.vocab.total ?? 0
+    if (exp && have !== exp.vocab) errors.push(`unit ${unit}: ${have} vocabulary entries, the page has ${exp.vocab}`)
+  }
+
+  const textBytes = Buffer.byteLength(JSON.stringify(b))
   if (textBytes > TEXT_BUDGET) errors.push(`text bundle ${fmtBytes(textBytes)} exceeds ${fmtBytes(TEXT_BUDGET)}`)
-  if (imageBytes > IMAGES_BUDGET) errors.push(`images ${fmtBytes(imageBytes)} exceed ${fmtBytes(IMAGES_BUDGET)}`)
-
-  return { errors, warnings, cards, stats }
+  return { errors, warnings, bundle: b, stats }
 }
 
 export function printResult(r: ValidationResult): void {
-  for (const block of [1, 2, 3, 4] as Block[]) {
-    const s = r.stats[block]
-    console.log(`block ${block}: ${s.total} cards (${s.checked} checked, ${s.draft} draft, ${s.stubs} stubs)`)
+  for (const [unit, s] of Object.entries(r.stats).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+    const pos = Object.entries(s.vocab.byPos).map(([p, n]) => `${p} ${n}`).join(', ')
+    console.log(`unit ${unit}: vocab ${s.vocab.total} (${s.vocab.checked} checked${pos ? `; ${pos}` : ''}) · verbs ${s.verbs} · grammar ${s.grammar} · exercises ${s.exercises} · texts ${s.texts} · proverbs ${s.proverbs}`)
   }
   for (const w of r.warnings) console.log(`warn  ${w}`)
   for (const e of r.errors) console.log(`ERROR ${e}`)
@@ -83,7 +107,7 @@ export function printResult(r: ValidationResult): void {
 }
 
 if (process.argv[1]?.endsWith('validate.ts')) {
-  const r = await validateCards(await loadCards())
+  const r = validateContent(await loadContent())
   printResult(r)
   process.exit(r.errors.length ? 1 : 0)
 }

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "builtAt": "2026-10-09T00:00:00.000Z",
+  "bundle": {
+    "file": "bundle.enc",
+    "bytes": 3695
+  },
+  "audio": [
+    {
+      "track": 1,
+      "file": "audio/01.enc",
+      "bytes": 16099,
+      "type": "audio/wav"
+    }
+  ],
+  "counts": {
+    "u1": {
+      "total": 3,
+      "checked": 2
+    },
+    "verbs": {
+      "total": 1,
+      "checked": 1
+    },
+    "exercises": {
+      "total": 1,
+      "checked": 1
+    }
+  }
+}

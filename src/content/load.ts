@@ -1,13 +1,20 @@
-// Fetches the encrypted bundle and turns it into cards. `?data=<dir>` switches the data directory
+// Fetches the encrypted bundle and turns it into content. `?data=<dir>` switches the data directory
 // (used by the Playwright smoke test with a dummy bundle); the choice sticks for the tab.
 import { decryptFile, deriveKey, exportRawKey, fromHex, importRawKey, readHeader, toHex } from '../crypto/format'
-import { BundleSchema, type Card } from './schema'
+import { BundleSchema, type Bundle } from './schema'
 
+export interface ManifestAudio {
+  track: number
+  file: string
+  bytes: number
+  /** media type of the decrypted bytes, e.g. audio/mpeg */
+  type: string
+}
 export interface Manifest {
   version: number
   builtAt: string
   bundle: { file: string; bytes: number }
-  images: { id: string; file: string; bytes: number }[]
+  audio: ManifestAudio[]
   counts: Record<string, { total: number; checked: number }>
 }
 
@@ -56,7 +63,7 @@ export async function fetchBytes(file: string): Promise<Uint8Array> {
 }
 
 export interface Unlocked {
-  cards: Card[]
+  bundle: Bundle
   manifest: Manifest
   rawKeyHex: string
 }
@@ -69,5 +76,5 @@ export async function unlockBundle(auth: { passphrase: string } | { rawKeyHex: s
   const key = 'rawKeyHex' in auth ? await importRawKey(fromHex(auth.rawKeyHex)) : await deriveKey(auth.passphrase, header.salt, header.iterations)
   const plain = await decryptFile(key, bytes)
   const bundle = BundleSchema.parse(JSON.parse(new TextDecoder().decode(plain)))
-  return { cards: bundle.cards, manifest, rawKeyHex: toHex(await exportRawKey(key)) }
+  return { bundle, manifest, rawKeyHex: toHex(await exportRawKey(key)) }
 }

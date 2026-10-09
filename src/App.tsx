@@ -2,13 +2,17 @@ import { useEffect } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useContent } from './store/content'
 import { useProgress } from './store/progress'
+import { GrammarTopicScreen } from './ui/GrammarTopic'
 import { Help } from './ui/Help'
 import { Home } from './ui/Home'
+import { Listen } from './ui/Listen'
 import { Lock } from './ui/Lock'
 import { Onboarding } from './ui/Onboarding'
 import { Settings } from './ui/Settings'
 import { Study } from './ui/Study'
-import { Topics } from './ui/Topics'
+import { UnitScreen } from './ui/UnitScreen'
+import { Units } from './ui/Units'
+import { Verbs } from './ui/Verbs'
 import { Weak } from './ui/Weak'
 
 /** A new mode or topic must start a new session, so the study screen is remounted per URL. */
@@ -28,7 +32,7 @@ function Gate() {
   if (status === 'idle' || status === 'checking')
     return (
       <main className="flex min-h-dvh items-center justify-center text-ink-muted" data-testid="splash">
-        Открываю материалы…
+        Opening the materials…
       </main>
     )
   if (status !== 'ready') return <Lock />
@@ -37,7 +41,11 @@ function Gate() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/study/:mode" element={<StudyRoute />} />
-      <Route path="/topics" element={<Topics />} />
+      <Route path="/verbs" element={<Verbs />} />
+      <Route path="/units" element={<Units />} />
+      <Route path="/units/:unit" element={<UnitScreen />} />
+      <Route path="/grammar/:id" element={<GrammarTopicScreen />} />
+      <Route path="/listen" element={<Listen />} />
       <Route path="/weak" element={<Weak />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/help" element={<Help />} />

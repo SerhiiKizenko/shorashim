@@ -59,6 +59,7 @@
 /* Expose tokens to Tailwind utilities: bg-bg, text-ink, bg-sage, border-rose … */
 @theme inline {
   --font-sans: "Nunito Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-hebrew: "Noto Sans Hebrew Variable", system-ui, -apple-system, "Arial Hebrew", sans-serif;
   --color-bg: var(--c-bg);
   --color-surface: var(--c-surface);
   --color-surface-2: var(--c-surface-2);
@@ -95,3 +96,5 @@ body {
 /* iOS zooms into inputs smaller than 16px — never go below. */
 input, select, textarea, button { font: inherit; }
 input, select, textarea { font-size: 16px; }
+/* Hebrew: its own font (Nunito has no Hebrew glyphs) with full vowel-point support; never smaller than body. */
+:lang(he) { font-family: var(--font-hebrew); }

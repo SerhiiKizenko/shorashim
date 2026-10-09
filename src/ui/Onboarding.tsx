@@ -1,38 +1,32 @@
-import { CalendarDays, Share, Save } from 'lucide-react'
-import { useState } from 'react'
-import { addDays, toDateString } from '../engine/scheduler'
+import { Keyboard, Save, Share } from 'lucide-react'
 import { useProgress } from '../store/progress'
 import { Button, Card } from './components'
 
 export function Onboarding() {
   const setSettings = useProgress((s) => s.setSettings)
-  const existing = useProgress((s) => s.settings.examDate)
-  const [date, setDate] = useState(existing ?? addDays(toDateString(new Date()), 14))
-
   return (
     <main className="safe-top safe-bottom safe-x mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-5">
-      <h1 className="text-2xl font-bold">Перед началом</h1>
-      <Card className="flex flex-col gap-3">
+      <h1 className="text-2xl font-bold">Before you start</h1>
+      <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
-          <CalendarDays size={20} className="text-sage-strong" /> Дата экзамена
+          <Share size={20} className="text-sage-strong" /> Add to the Home Screen
         </div>
-        <p className="text-sm text-ink-muted">От неё считается, сколько новых карточек показывать в день.</p>
-        <input data-testid="onboarding-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="min-h-12 rounded-2xl border border-surface-2 bg-bg px-4 text-base" />
+        <p className="text-sm text-ink-muted">In Safari: Share → «Add to Home Screen». The app then works offline, and iOS keeps your progress.</p>
       </Card>
       <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
-          <Share size={20} className="text-sage-strong" /> Добавьте на экран «Домой»
+          <Keyboard size={20} className="text-sage-strong" /> Hebrew keyboard
         </div>
-        <p className="text-sm text-ink-muted">В Safari: кнопка «Поделиться» → «На экран „Домой“». Тогда приложение работает без сети, а iOS не удалит прогресс через неделю.</p>
+        <p className="text-sm text-ink-muted">You type the answers in Hebrew — without vowel points. iPhone: Settings → General → Keyboard → Keyboards → Add New Keyboard → Hebrew. Mac: System Settings → Keyboard → Input Sources. Details are in Help.</p>
       </Card>
       <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
-          <Save size={20} className="text-sage-strong" /> Резервная копия раз в неделю
+          <Save size={20} className="text-sage-strong" /> Weekly backup
         </div>
-        <p className="text-sm text-ink-muted">В настройках — «Резервная копия». Файл можно сохранить в «Файлы» или отправить себе.</p>
+        <p className="text-sm text-ink-muted">Progress lives only on this device. Settings → «Backup» saves it as a file you can keep in Files or send to yourself.</p>
       </Card>
-      <Button data-testid="onboarding-start" disabled={!date} onClick={() => setSettings({ examDate: date, onboarded: true })}>
-        Начать
+      <Button data-testid="onboarding-start" onClick={() => setSettings({ onboarded: true })}>
+        Start
       </Button>
     </main>
   )

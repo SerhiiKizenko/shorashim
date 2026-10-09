@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import '@fontsource-variable/nunito'
+import '@fontsource-variable/noto-sans-hebrew'
 import './index.css'
 import { App } from './App'
 import { registerSW } from 'virtual:pwa-register'

@@ -1,7 +1,7 @@
 import { ChevronLeft } from 'lucide-react'
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BLOCK_TITLES, type Block } from '../content/schema'
+import type { Grade } from '../engine/scheduler'
 
 export function Screen({ title, back, right, children, footer }: { title?: string; back?: string; right?: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -9,7 +9,7 @@ export function Screen({ title, back, right, children, footer }: { title?: strin
       {(title || back) && (
         <header className="safe-top safe-x sticky top-0 z-10 flex items-center gap-2 bg-bg/90 pb-2 backdrop-blur">
           {back ? (
-            <Link to={back} aria-label="Назад" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted active:bg-surface-2">
+            <Link to={back} aria-label="Back" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted active:bg-surface-2">
               <ChevronLeft />
             </Link>
           ) : null}
@@ -34,24 +34,23 @@ const variants: Record<Variant, string> = {
 }
 
 export function Button({ variant = 'primary', className = '', ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+  return <button type="button" className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition disabled:opacity-40 ${variants[variant]} ${className}`} {...rest} />
+}
+
+export function Card({ children, className = '', ...rest }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
+  // A caller that sets its own bg-* must win; two bg utilities on one element resolve by stylesheet order, not by props.
+  const bg = /\bbg-/.test(className) ? '' : 'bg-surface'
   return (
-    <button
-      type="button"
-      className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold transition disabled:opacity-40 ${variants[variant]} ${className}`}
-      {...rest}
-    />
+    <div className={`rounded-3xl ${bg} p-5 shadow-sm ${className}`} {...rest}>
+      {children}
+    </div>
   )
 }
 
-const blockColor: Record<Block, string> = { 1: 'bg-lavender', 2: 'bg-sand', 3: 'bg-rose', 4: 'bg-mist' }
-
-export function BlockBadge({ block, label }: { block: Block; label?: string }) {
-  return (
-    <span className={`inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-ink ${blockColor[block]}`}>
-      <span className="shrink-0">Блок {block} · {BLOCK_TITLES[block]}</span>
-      {label ? <span className="truncate opacity-80">· {label}</span> : null}
-    </span>
-  )
+type Tone = 'sand' | 'lavender' | 'rose' | 'mist' | 'sage'
+const tones: Record<Tone, string> = { sand: 'bg-sand', lavender: 'bg-lavender', rose: 'bg-rose', mist: 'bg-mist', sage: 'bg-sage' }
+export function Badge({ children, tone = 'sand', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
+  return <span className={`inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-ink ${tones[tone]} ${className}`}>{children}</span>
 }
 
 export function ProgressRing({ value, size = 96, label, sub }: { value: number; size?: number; label: string; sub?: string }) {
@@ -72,20 +71,28 @@ export function ProgressRing({ value, size = 96, label, sub }: { value: number; 
   )
 }
 
-export function Card({ children, className = '', ...rest }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
-  // A caller that sets its own bg-* must win; two bg utilities on one element resolve by stylesheet order, not by props.
-  const bg = /\bbg-/.test(className) ? '' : 'bg-surface'
+/** The three self-grade buttons; `allow` greys out the ones that make no sense after a typed answer. */
+export function GradeBar({ onGrade, allow = ['again', 'hard', 'good'] }: { onGrade: (g: Grade) => void; allow?: Grade[] }) {
   return (
-    <div className={`rounded-3xl ${bg} p-5 shadow-sm ${className}`} {...rest}>
-      {children}
+    <div className="grid grid-cols-3 gap-2">
+      <Button data-testid="grade-again" variant="bad" disabled={!allow.includes('again')} onClick={() => onGrade('again')}>Again</Button>
+      <Button data-testid="grade-hard" variant="warn" disabled={!allow.includes('hard')} onClick={() => onGrade('hard')}>Hard</Button>
+      <Button data-testid="grade-good" variant="ok" disabled={!allow.includes('good')} onClick={() => onGrade('good')}>Good</Button>
     </div>
   )
 }
 
-export const plural = (n: number, one: string, few: string, many: string): string => {
-  const m10 = n % 10
-  const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return one
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
-  return many
+export function DraftNote({ status, flags = [] }: { status: 'draft' | 'checked'; flags?: string[] }) {
+  if (status === 'checked' && !flags.length) return null
+  return (
+    <p className="rounded-2xl bg-warn/25 px-4 py-2 text-sm">
+      {status === 'draft' ? 'Draft — not yet checked against the book. ' : ''}
+      {flags.includes('generated') ? 'Some cells follow the book’s pattern but are not printed in the book. ' : ''}
+      {flags.includes('unreadable') ? 'A spot on the page could not be read (marked "?"). ' : ''}
+    </p>
+  )
 }
+
+export const Pages = ({ pages }: { pages: number[] }) => <span className="text-xs text-ink-muted">{pages.length === 1 ? `p. ${pages[0]}` : `pp. ${pages.join(', ')}`}</span>
+
+export const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many)

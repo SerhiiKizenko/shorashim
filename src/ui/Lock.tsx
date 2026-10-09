@@ -22,22 +22,22 @@ export function Lock() {
         <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-sage text-on-accent">
           <LockIcon size={28} />
         </div>
-        <h1 className="text-3xl font-bold">Мышечная память</h1>
-        <p className="text-ink-muted">Тренажёр к экзамену. Введите пароль, чтобы открыть материалы.</p>
+        <h1 className="text-3xl font-bold">Shorashim</h1>
+        <p className="text-ink-muted">Hebrew trainer for «Шэат иврит II». Enter the passphrase to open the materials.</p>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <input
           data-testid="lock-passphrase"
           type="password"
           autoComplete="current-password"
-          placeholder="Пароль"
+          placeholder="Passphrase"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           className="min-h-12 rounded-2xl border border-surface-2 bg-surface px-4 text-base outline-none focus:border-sage-strong"
         />
         <label className="flex min-h-11 items-center gap-3 text-ink-muted">
           <input data-testid="lock-remember" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-5 w-5 accent-[var(--c-sage-strong)]" />
-          Запомнить на этом устройстве
+          Remember on this device
         </label>
         {error ? (
           <p data-testid="lock-error" className="rounded-2xl bg-bad/20 px-4 py-3 text-sm">
@@ -45,7 +45,7 @@ export function Lock() {
           </p>
         ) : null}
         <Button data-testid="lock-submit" type="submit" disabled={busy || !passphrase.trim()}>
-          {busy ? 'Расшифровываю…' : 'Открыть'}
+          {busy ? 'Decrypting…' : 'Open'}
         </Button>
       </form>
     </main>
