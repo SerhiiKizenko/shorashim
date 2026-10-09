@@ -98,7 +98,7 @@ for (const p of pages) {
     const vocabEntry = vocab.find((v) => v.pos === 'verb' && v.lemma.plain === tv.infinitive.plain)
     const infinitive = form(tv.infinitive, `${id} infinitive`)
     // pi'el, regular or quadriliteral: fill the future from the book's pattern (p.54) where the page prints nothing
-    if (tv.binyan === 'piel' && (tv.group === 'shlemim' || tv.group === 'quad')) {
+    if (tv.binyan === 'piel' && ['shlemim', 'quad', 'ayin-yod', 'gutturals'].includes(tv.group)) {
       const gen = pielFuture(infinitive)
       const t = forms.future ?? (forms.future = {})
       const missing = (TENSE_CELLS.future as readonly string[]).filter((c) => !t[c])

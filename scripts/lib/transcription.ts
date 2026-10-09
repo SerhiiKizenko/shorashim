@@ -34,7 +34,7 @@ export const TVerb = z
     ru: z.string().optional(),
     government: z.string().optional(),
     /** cells the page prints, per tense */
-    forms: z.record(TenseSchema, z.record(z.string(), Form)).optional(),
+    forms: z.partialRecord(TenseSchema, z.record(z.string(), Form)).optional(),
     flags: z.array(FlagSchema).default([]),
     notes: z.string().optional(),
   })

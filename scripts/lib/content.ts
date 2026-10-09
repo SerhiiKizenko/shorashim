@@ -17,7 +17,7 @@ export async function readJsonArray<T>(file: string): Promise<T[]> {
 
 export async function loadContent(): Promise<BundleInput> {
   const b: Record<string, unknown> = { ...EMPTY_BUNDLE }
-  for (const f of CONTENT_FILES) b[f] = await readJsonArray(join(CONTENT_DIR, `.json`))
+  for (const f of CONTENT_FILES) b[f] = await readJsonArray(join(CONTENT_DIR, `${f}.json`))
   return b as unknown as BundleInput
 }
 
