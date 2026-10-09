@@ -40,3 +40,7 @@ entries below are what this session added or made concrete.
 - **2026-10-09 — A misprint in the answer key is recorded as printed and flagged `conflict`.** p.192 prints «נטלפן»
   for 2.1 ז («הן טילפנו» → the future is יטלפנו). The item lists the expected form first (shown on reveal) and the
   printed one second (still accepted), with the note; the teacher confirms at G1.
+- **2026-10-09 — Dot-sized marks are below the scan's resolution.** A pixel-level second read of p.8 showed that
+  dagesh, shin/sin dots, shva and holam dots survive the 300-dpi scan only sporadically. For those marks the standard
+  orthography is recorded and the page note says so; letter-level and bar-shaped vowel differences are settled at
+  600 dpi (p.8: לִכְעֹס without vav, «יותר מכול» with vav). Serhii or the teacher checks the physical book at G1.

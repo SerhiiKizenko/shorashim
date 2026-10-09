@@ -69,3 +69,15 @@ subagents read pass 2 independently. Dry run of `import-book` → `validate` →
 16 verbs (15 with generated cells), 1 topic, 2 exercises, 0 missing answers; bundle 38 KB; tracks 01–12
 encrypted (12.3 MB). Lesson: a perl replacement swallowed `${f}` in the loader (every file became `.json`)
 — caught by the validator's count check.
+
+**Two-pass merge (19:00–19:20)**: pp.54/55/192 — 2.1 ז: the key prints «נטלפן» (misprint for יטלפנו; recorded as
+printed, flagged conflict, expected form first); the bold prefix ת hides any dagesh (standard תְּ kept, noted);
+pronoun labels keep the printed parentheses. p.8 — pass 2 read at pixel level and found the scan loses most
+dot-sized marks (dagesh, shin dots): standard orthography kept for those as a class (decision); re-read at 600 dpi
+settled לִכְעֹס (no vav; plain לכעוס) and «יותר מכול» (with vav); תקליט flagged conflict (dot-like mark under ת).
+Imported, validated, encrypted; pushed → deploy.
+
+**Next**: G1 (Serhii, and the teacher if he likes): the 20 entries, the pi'el screen, the לדבר and לספר grids;
+the four open spots above; whether the 15 generated infinitive pointings are right. G2 on the iPhone (passphrase,
+Home Screen, offline, grid typing, audio). Then pp.18, 34, 50 (crops already rendered) and the rest of the
+session plan; session 3 as in the kickoff.
