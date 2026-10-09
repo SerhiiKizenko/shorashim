@@ -23,8 +23,9 @@
 - `checked` — every string verified against a cited page; `pnpm validate` refuses `checked` records with
   `?`, with the `unreadable` flag, or (verbs) with a missing cell.
 - `unreadable` — a spot the render did not settle; the text holds `?`. Never guess; re-render at a higher zoom.
-- `conflict` — two passes or two pages disagree; `notes` says which won and why (the book's own table beats
-  a generated cell; the answer key beats an inferred answer).
+- `conflict` — two passes or two pages disagree, or the book contradicts itself (a key misprint); `notes` says
+  which won and why (the book's own table beats a generated cell; a printed key beats an inferred answer; a
+  grammatically impossible key line is kept as printed with the expected form listed first).
 - `unsupported` — not in the book (kept only when the teacher asked for it; say where it came from).
 - `generated` — a paradigm cell produced from the book's pattern by `scripts/lib/piel-future.ts`, not yet seen
   printed. Stays until checked against a printed form.

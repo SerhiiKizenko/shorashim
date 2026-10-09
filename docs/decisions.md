@@ -31,3 +31,12 @@ entries below are what this session added or made concrete.
   public repo holds no book content even in test data.
 - **2026-10-09 — Storage keys `sh.*`, backup `app: 'shorashim'`,** scoped by data directory as before.
 - **2026-10-09 — Pages cited are PDF pages,** which equal the printed book pages (verified on p.15 in session 1).
+- **2026-10-09 — A dagesh inside a bold, solid prefix letter is undecidable from the scan.** The p.54 table prints the
+  prefix ת in bold; neither pass could see a dot inside it. The standard dagesh lene (תְּ) is recorded, the
+  ambiguity noted on the record, and the teacher is asked at G1. The checker ignores points, so drills are unaffected.
+- **2026-10-09 — Root group is about conjugation, not letters.** A root whose *last* letter is ר (ד.ב.ר, ב.ק.ר, ס.ד.ר)
+  stays `shlemim`: a final radical never takes the pi'el dagesh. `gutturals` is for a 2nd radical in א ה ח ע ר
+  (ש.ח.ק, ש.ר.ת), where the pointing changes.
+- **2026-10-09 — A misprint in the answer key is recorded as printed and flagged `conflict`.** p.192 prints «נטלפן»
+  for 2.1 ז («הן טילפנו» → the future is יטלפנו). The item lists the expected form first (shown on reveal) and the
+  printed one second (still accepted), with the note; the teacher confirms at G1.
