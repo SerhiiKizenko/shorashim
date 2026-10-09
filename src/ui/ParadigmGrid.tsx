@@ -83,7 +83,7 @@ export function ParadigmGrid({ heading, columns, cells, onCell, onFinished }: { 
                 />
               </div>
               {res && !res.ok ? (
-                <p data-testid={`grid-feedback-${r.i}`} className="pl-[6.75rem] text-sm text-ink-muted">
+                <p data-testid={`grid-feedback-${r.i}`} dir="rtl" className="pr-1 text-right text-sm text-ink-muted">
                   {res.reason === 'final-letter' ? 'Only a final letter is wrong · ' : res.reason === 'empty' ? 'Empty · ' : ''}
                   <Pointed>{r.form.pointed}</Pointed> <HebrewText size="sm">({r.form.plain})</HebrewText>
                 </p>

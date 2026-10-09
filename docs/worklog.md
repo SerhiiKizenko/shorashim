@@ -54,3 +54,18 @@ p.54 verb list gets standard pi'el pointing flagged `generated` for G1; grid/exe
 **Findings**: `rsync --exclude content` also drops `src/content/` (same trap as the gitignore lesson) — copy it
 back; the kickoff's secrets grep matches `src/content/`, use `^content/|^sources/`. The unit-4 answer key is
 p.192 (2.1 and 2.2 both there).
+
+**Deploy (18:17)**: `gh repo create SerhiiKizenko/shorashim --public --source=. --push`, Pages via workflow;
+run 37950533218 succeeded; https://serhiikizenko.github.io/shorashim/ → 200. Lighthouse mobile on the live
+shell: performance 99, accessibility 100, best practices 100, SEO 100. Chrome drive with the dummy bundle at
+desktop width: lock → onboarding → Home (Future chip on, counts) → Verbs → future grid: Noto Sans Hebrew renders
+the niqqud (לִכְתּוֹב, תִּכְתְּבִי), RTL inputs, wrong cells red with the printed form under them, no console
+errors. Polish from the drive: the per-cell feedback line is now right-aligned under its input.
+
+**Content (18:20–18:25)**: pass 1 written for p.54 (grammar topic u04-s2, 16 pi'el verbs, לספר's table),
+p.55 (ex 2.1: 10 items, ו split in two; ex 2.2: 9 items, ד and ח split), p.192 (key: 2.1 and 2.2), p.8
+(39 entries: 14 verbs, 15 nouns, 1 conjunction, 1 adjective, 6 adverbs, 2 phrases — counted twice). Two fresh
+subagents read pass 2 independently. Dry run of `import-book` → `validate` → `encrypt` on pass 1: 39 vocab,
+16 verbs (15 with generated cells), 1 topic, 2 exercises, 0 missing answers; bundle 38 KB; tracks 01–12
+encrypted (12.3 MB). Lesson: a perl replacement swallowed `${f}` in the loader (every file became `.json`)
+— caught by the validator's count check.

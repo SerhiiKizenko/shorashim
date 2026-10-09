@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "builtAt": "2026-10-09T15:25:25.291Z",
+  "bundle": {
+    "file": "bundle.enc",
+    "bytes": 38638
+  },
+  "audio": [
+    {
+      "track": 1,
+      "file": "audio/01.enc",
+      "bytes": 1311999,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 2,
+      "file": "audio/02.enc",
+      "bytes": 275471,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 3,
+      "file": "audio/03.enc",
+      "bytes": 288403,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 4,
+      "file": "audio/04.enc",
+      "bytes": 1618359,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 5,
+      "file": "audio/05.enc",
+      "bytes": 1094695,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 6,
+      "file": "audio/06.enc",
+      "bytes": 1080705,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 7,
+      "file": "audio/07.enc",
+      "bytes": 745050,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 8,
+      "file": "audio/08.enc",
+      "bytes": 257263,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 9,
+      "file": "audio/09.enc",
+      "bytes": 1780534,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 10,
+      "file": "audio/10.enc",
+      "bytes": 1266450,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 11,
+      "file": "audio/11.enc",
+      "bytes": 1697589,
+      "type": "audio/mpeg"
+    },
+    {
+      "track": 12,
+      "file": "audio/12.enc",
+      "bytes": 1527051,
+      "type": "audio/mpeg"
+    }
+  ],
+  "counts": {
+    "u1": {
+      "total": 39,
+      "checked": 0
+    },
+    "u2": {
+      "total": 0,
+      "checked": 0
+    },
+    "u3": {
+      "total": 0,
+      "checked": 0
+    },
+    "u4": {
+      "total": 0,
+      "checked": 0
+    },
+    "u5": {
+      "total": 0,
+      "checked": 0
+    },
+    "u6": {
+      "total": 0,
+      "checked": 0
+    },
+    "u7": {
+      "total": 0,
+      "checked": 0
+    },
+    "u8": {
+      "total": 0,
+      "checked": 0
+    },
+    "u9": {
+      "total": 0,
+      "checked": 0
+    },
+    "u10": {
+      "total": 0,
+      "checked": 0
+    },
+    "u11": {
+      "total": 0,
+      "checked": 0
+    },
+    "u12": {
+      "total": 0,
+      "checked": 0
+    },
+    "u13": {
+      "total": 0,
+      "checked": 0
+    },
+    "verbs": {
+      "total": 16,
+      "checked": 0
+    },
+    "exercises": {
+      "total": 2,
+      "checked": 0
+    }
+  }
+}
