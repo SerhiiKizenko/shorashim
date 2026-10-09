@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Design tokens — pastel, calm. Runtime variables so dark mode flips without rebuilding. */
+:root {
+  color-scheme: light dark;
+  --c-bg: #faf7f2;
+  --c-surface: #ffffff;
+  --c-surface-2: #f3eee6;
+  --c-text: #2f2a2a;
+  --c-text-muted: #6f6868;
+  --c-sage: #a8c3b1;
+  --c-sage-strong: #6e9a80;
+  --c-lavender: #c9c2e3;
+  --c-sand: #e8d9b8;
+  --c-rose: #e4c4c9;
+  --c-mist: #bfd4dc;
+  --c-ok: #7fb58e;
+  --c-warn: #e7b86a;
+  --c-bad: #e39c8e;
+  --c-on-accent: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg: #1c1b1f;
+    --c-surface: #26242a;
+    --c-surface-2: #302d34;
+    --c-text: #ece7e1;
+    --c-text-muted: #a9a2a5;
+    --c-sage: #7fa38c;
+    --c-sage-strong: #a8c3b1;
+    --c-lavender: #9d94c4;
+    --c-sand: #c5b48f;
+    --c-rose: #c0929a;
+    --c-mist: #8faab4;
+    --c-ok: #8fc49c;
+    --c-warn: #d9ae6b;
+    --c-bad: #d98c7d;
+    --c-on-accent: #1c1b1f;
+  }
+}
+:root[data-theme="dark"] {
+  --c-bg: #1c1b1f;
+  --c-surface: #26242a;
+  --c-surface-2: #302d34;
+  --c-text: #ece7e1;
+  --c-text-muted: #a9a2a5;
+  --c-sage: #7fa38c;
+  --c-sage-strong: #a8c3b1;
+  --c-lavender: #9d94c4;
+  --c-sand: #c5b48f;
+  --c-rose: #c0929a;
+  --c-mist: #8faab4;
+  --c-ok: #8fc49c;
+  --c-warn: #d9ae6b;
+  --c-bad: #d98c7d;
+  --c-on-accent: #1c1b1f;
+}
+
+/* Expose tokens to Tailwind utilities: bg-bg, text-ink, bg-sage, border-rose … */
+@theme inline {
+  --font-sans: "Nunito Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-ink: var(--c-text);
+  --color-ink-muted: var(--c-text-muted);
+  --color-sage: var(--c-sage);
+  --color-sage-strong: var(--c-sage-strong);
+  --color-lavender: var(--c-lavender);
+  --color-sand: var(--c-sand);
+  --color-rose: var(--c-rose);
+  --color-mist: var(--c-mist);
+  --color-ok: var(--c-ok);
+  --color-warn: var(--c-warn);
+  --color-bad: var(--c-bad);
+  --color-on-accent: var(--c-on-accent);
+}
+
+html, body, #root { min-height: 100dvh; }
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+/* Respect the notch and the home indicator. */
+.safe-top { padding-top: max(env(safe-area-inset-top), 12px); }
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+.safe-x { padding-left: max(env(safe-area-inset-left), 16px); padding-right: max(env(safe-area-inset-right), 16px); }
+/* iOS zooms into inputs smaller than 16px — never go below. */
+input, select, textarea, button { font: inherit; }
+input, select, textarea { font-size: 16px; }

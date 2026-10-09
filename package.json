@@ -1,0 +1,58 @@
+{
+  "name": "shorashim",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.24.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "icons": "tsx scripts/icons.ts",
+    "inventory": "tsx scripts/inventory.ts",
+    "extract": "tsx scripts/extract.ts",
+    "ocr": "tsx scripts/ocr.ts",
+    "validate": "tsx scripts/validate.ts",
+    "encrypt": "tsx scripts/encrypt.ts",
+    "import-answers": "tsx scripts/import-answers.ts",
+    "find": "tsx scripts/find.ts",
+    "apply-verified": "tsx scripts/apply-verified.ts",
+    "test-bundle": "tsx scripts/make-test-bundle.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/noto-sans-hebrew": "^5.3.0",
+    "@fontsource-variable/nunito": "^5.3.0",
+    "lucide-react": "^1.54.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.4",
+    "workbox-window": "^7.4.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.2",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

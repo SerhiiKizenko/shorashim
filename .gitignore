@@ -1,0 +1,26 @@
+# dependencies / build
+node_modules/
+dist/
+.vite/
+# secrets — never commit
+.env.local
+.env.*.local
+# plaintext course content and source PDFs — the repo is public
+/content/
+/sources/
+# tooling noise
+*.log
+.DS_Store
+playwright-report/
+test-results/
+
+# pwa dev artefacts
+dev-dist/
+*.tsbuildinfo
+
+# session kickoff prompt — local only
+KICKOFF-PROMPT.md
+
+# template / session-prep files — local only
+SESSION-1-PREP.md
+KICKOFF-PROMPT.template.md
