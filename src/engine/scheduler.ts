@@ -64,10 +64,16 @@ export function applyGrade(prev: ItemProgress | undefined, grade: Grade, today: 
   } else if (grade === 'good') {
     box = Math.min(MASTERED_BOX, box + 1) as Box
   }
-  return { ...base, box, due: addDays(today, BOX_INTERVAL_DAYS[box]), lastReviewed: today, lastGrade: grade, reps: base.reps + 1, lapses }
+  // «Hard» keeps the box but never comes back the same day: a box-1 item rests until tomorrow (decision 2026-10-16).
+  const days = grade === 'hard' ? Math.max(1, BOX_INTERVAL_DAYS[box]) : BOX_INTERVAL_DAYS[box]
+  return { ...base, box, due: addDays(today, days), lastReviewed: today, lastGrade: grade, reps: base.reps + 1, lapses }
 }
 
 export const isDue = (p: ItemProgress, today: string): boolean => p.due <= today
+
+/** Weak = failed and not yet recovered: box 1, or box 2 reached after a lapse. A new item answered Good once sits in
+ * box 2 with no lapse — young, not weak (decision 2026-10-16). */
+export const isWeak = (p: ItemProgress): boolean => p.box === 1 || (p.box === 2 && p.lapses > 0)
 
 /** Round-robin across clusters so consecutive items come from different places. */
 export function interleaveByCluster<T extends { cluster: string }>(items: T[]): T[] {
@@ -95,11 +101,18 @@ export function interleaveByCluster<T extends { cluster: string }>(items: T[]): 
 
 const byBookOrder = (a: SchedItem, b: SchedItem) => a.unit - b.unit || a.order - b.order
 
+/** New items still allowed today: the daily limit minus the items first seen today, in any mode. */
+export function newAllowance(progress: ProgressMap, today: string, newPerDay: number): number {
+  let introduced = 0
+  for (const p of Object.values(progress)) if (p.introduced === today) introduced++
+  return Math.max(0, newPerDay - introduced)
+}
+
 export interface TodayQueueInput {
   items: SchedItem[]
   progress: ProgressMap
   today: string
-  /** new items allowed today (Settings, default 10) */
+  /** new items still allowed today — see newAllowance */
   newLimit: number
 }
 
@@ -127,9 +140,14 @@ export function buildTopicQueue(items: SchedItem[], progress: ProgressMap, today
   return mine.sort((a, b) => rank(a) - rank(b) || byBookOrder(a, b)).map((c) => c.id)
 }
 
-/** «Weak spots»: seen items still in boxes 1–2. */
+/** «Weak spots»: seen items that are weak (see isWeak). */
 export function buildWeakQueue(items: SchedItem[], progress: ProgressMap): string[] {
-  return interleaveByCluster(items.filter((c) => (progress[c.id]?.box ?? 9) <= 2)).map((c) => c.id)
+  return interleaveByCluster(
+    items.filter((c) => {
+      const p = progress[c.id]
+      return p !== undefined && isWeak(p)
+    }),
+  ).map((c) => c.id)
 }
 
 /** «N more new»: the next unseen items beyond today's limit, cluster-interleaved. */
@@ -144,9 +162,9 @@ export interface ClusterStat {
   kind: ItemKind
   total: number
   unseen: number
-  /** boxes 1–2 */
+  /** failed and not yet recovered (see isWeak) */
   weak: number
-  /** boxes 3–6 */
+  /** seen, not weak, not yet mastered */
   learning: number
   /** box 7 */
   mastered: number
@@ -163,7 +181,7 @@ export function clusterStats(items: SchedItem[], progress: ProgressMap): Cluster
     s.total++
     const p = progress[c.id]
     if (!p) s.unseen++
-    else if (p.box <= 2) s.weak++
+    else if (isWeak(p)) s.weak++
     else if (p.box < MASTERED_BOX) s.learning++
     else s.mastered++
   }
@@ -176,6 +194,7 @@ export interface Session {
   index: number
   /** items that failed at least once this session: they must pass twice before leaving */
   failed: Record<string, true>
+  /** every item graded this session has an entry (0 right after a fail) */
   passes: Record<string, number>
   done: number
 }
@@ -210,4 +229,12 @@ export function gradeInSession(s: Session, grade: Grade, rand: () => number): Se
     done++
   }
   return { queue, index: next, failed, passes, done }
+}
+
+/** The schedule learns from the first answer to an item in a session only. The forced re-passes of a failed item
+ * (see gradeInSession) are rehearsal, not evidence for a longer interval — except a fresh «Again», which is a real
+ * lapse and must be recorded. */
+export function shouldPersistGrade(s: Session, grade: Grade): boolean {
+  const id = s.queue[s.index]
+  return id !== undefined && (!(id in s.passes) || grade === 'again')
 }

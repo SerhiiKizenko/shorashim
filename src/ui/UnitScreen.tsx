@@ -46,7 +46,7 @@ export function UnitScreen() {
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between px-1">
               <h2 className="font-bold">Vocabulary · {vocab.length}</h2>
-              <Link to={`/study/topic?unit=${unit}&kind=vocab`} className="text-sm font-semibold text-sage-strong">drill →</Link>
+              <Link to={`/study/topic?unit=${unit}&kind=vocab`} className="flex min-h-11 items-center text-sm font-semibold text-sage-strong">drill →</Link>
             </div>
             {POS.filter((p) => vocab.some((v) => v.pos === p)).map((p) => (
               <Card key={p} className="flex flex-col gap-2 py-4">

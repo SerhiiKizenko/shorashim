@@ -1,13 +1,25 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { GRID_COLUMNS, TENSE_LABELS, type Tense } from '../content/schema'
+import { BINYAN_LABELS, GRID_COLUMNS, POS_LABELS, TENSE_LABELS, type Binyan, type Pos, type Tense } from '../content/schema'
 import { filterByFocus } from '../engine/items'
-import { clusterStats } from '../engine/scheduler'
+import { clusterStats, type ClusterStat } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress } from '../store/progress'
 import { Button, Card, Screen } from './components'
 import { HebrewText } from './hebrew'
 import { StatBar } from './Units'
+
+/** A readable name for a cluster id: `u1:noun` → Nouns, `piel:future` → Pi'el · Future grids, `u4:ex` → exercises. */
+function clusterLabel(s: ClusterStat): string {
+  if (s.kind === 'grid') {
+    const [binyan, tense] = s.cluster.split(':')
+    return `${BINYAN_LABELS[binyan as Binyan]?.en ?? binyan} · ${TENSE_LABELS[tense as Tense]?.en ?? tense} grids`
+  }
+  if (s.kind === 'exercise') return 'exercises'
+  if (s.kind === 'prep') return 'prepositions'
+  const pos = s.cluster.replace(/^u\d+:/, '')
+  return POS_LABELS[pos as Pos] ?? pos
+}
 
 export function Weak() {
   const items = useContent((s) => s.items)
@@ -50,7 +62,7 @@ export function Weak() {
               <Link key={r.cluster} to={`/study/topic?cluster=${encodeURIComponent(r.cluster)}`}>
                 <Card className="flex flex-col gap-2 py-4">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">Unit {r.unit} · {r.cluster.replace(/^u\d+:/, '')}</span>
+                    <span className="font-medium">Unit {r.unit} · {clusterLabel(r)}</span>
                     <span className="shrink-0 text-sm text-bad">{r.weak} weak</span>
                   </div>
                   <StatBar s={r} />

@@ -31,9 +31,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App shell + the encrypted text bundle are precached so the trainer works offline.
-        globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}', 'data/*.enc'],
-        globIgnores: ['**/node_modules/**/*', 'data/audio/**', 'data-test/**'],
+        // App shell + the encrypted text bundle + its manifest are precached so the trainer opens offline; the
+        // loader reads manifest.json first, so leaving it out made every offline start fail. The dummy bundle is
+        // precached too (tiny, public) so the offline e2e test can run; audio is never precached.
+        globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}', 'data/*.enc', 'data/manifest.json', 'data-test/bundle.enc', 'data-test/manifest.json'],
+        globIgnores: ['**/node_modules/**/*', 'data/audio/**', 'data-test/audio/**'],
         runtimeCaching: [
           {
             // one encrypted file per track, ~40 MB in all: cached after the first play, never precached

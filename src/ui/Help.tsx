@@ -7,7 +7,7 @@ export function Help() {
       <div className="flex flex-col gap-4 pt-2 pb-6">
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Start with «Today»</h2>
-          <p className="text-ink-muted">Reviews come first, then new items in book order — as many as «New items per day» allows. Have time left? «10 more new» on the finish screen.</p>
+          <p className="text-ink-muted">Reviews come first, then new items in book order — as many as «New items per day» allows, counted per calendar day: reopening «Today» later the same day brings only what is due. Have time left? «10 more new» on the finish screen.</p>
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Type Hebrew without vowel points</h2>
@@ -17,7 +17,7 @@ export function Help() {
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Hebrew keyboard</h2>
-          <p className="text-ink-muted"><b className="text-ink">iPhone:</b> Settings → General → Keyboard → Keyboards → Add New Keyboard → Hebrew. Switch with the globe key.</p>
+          <p className="text-ink-muted"><b className="text-ink">Android (Gboard):</b> Settings → System → Languages & input → On-screen keyboard → Gboard → Languages → add Hebrew. Switch with the globe key or by holding the space bar.</p>
           <p className="text-ink-muted"><b className="text-ink">Mac:</b> System Settings → Keyboard → Input Sources → + → Hebrew. Switch with ⌃ Space or the input menu in the menu bar.</p>
         </Card>
         <Card className="flex flex-col gap-2">
@@ -30,8 +30,8 @@ export function Help() {
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">What the grades do</h2>
-          <p><span className="rounded-full bg-bad px-2 py-0.5 text-sm text-on-accent">Again</span> — back after 4–6 items in this session, and again tomorrow.</p>
-          <p><span className="rounded-full bg-warn px-2 py-0.5 text-sm text-ink">Hard</span> — stays at its level and returns on that level's schedule.</p>
+          <p><span className="rounded-full bg-bad px-2 py-0.5 text-sm text-on-accent">Again</span> — back after 4–6 items in this session (it must then pass twice), and it stays due until you get it right in a later session. Only that first answer counts for the schedule; the re-passes are rehearsal.</p>
+          <p><span className="rounded-full bg-warn px-2 py-0.5 text-sm text-ink">Hard</span> — stays at its level and returns on that level's schedule; an item still at the bottom comes back tomorrow, not the same day.</p>
           <p><span className="rounded-full bg-ok px-2 py-0.5 text-sm text-on-accent">Good</span> — one level up, seen less often: after 1, 3, 7, 14, 30 and then every 60 days. Nothing ever leaves the rotation.</p>
         </Card>
         <Card className="flex flex-col gap-2">
@@ -39,7 +39,7 @@ export function Help() {
           <ul className="list-disc space-y-1 pl-5 text-ink-muted">
             <li><b className="text-ink">Verbs</b> — grids, single forms and «which form is this?» for the tenses in focus.</li>
             <li><b className="text-ink">Units</b> — browse any unit: vocabulary, grammar with the book's explanation, exercises with the answer key, texts with audio.</li>
-            <li><b className="text-ink">Weak spots</b> — what keeps failing, including single grid cells.</li>
+            <li><b className="text-ink">Weak spots</b> — what you got wrong and have not yet got right twice since (plus single grid cells that keep failing). A new word answered Good once is young, not weak.</li>
             <li><b className="text-ink">Listen</b> — the book's recordings next to their page.</li>
           </ul>
         </Card>
@@ -49,7 +49,11 @@ export function Help() {
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Keep your progress</h2>
-          <p className="text-ink-muted">Progress lives only on this device. Add the app to the Home Screen (Safari: Share → «Add to Home Screen») and make a «Backup» in Settings once a week.</p>
+          <p className="text-ink-muted">Progress lives in Chrome on this phone; the app installed from Chrome (⋮ → «Add to Home screen») shares it. Make a «Backup» in Settings once a week: it opens the share sheet — save the file to Drive or Files. On a new phone, «Restore from file» brings it back; the app shows what the file holds before replacing anything.</p>
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <h2 className="font-semibold">Updates</h2>
+          <p className="text-ink-muted">New builds install by themselves. If one arrives while you are in a drill, the app finishes the drill first and reloads when you return to the Home screen.</p>
         </Card>
       </div>
     </Screen>

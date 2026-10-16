@@ -1,4 +1,4 @@
-import { Keyboard, Save, Share } from 'lucide-react'
+import { Keyboard, Save, Smartphone } from 'lucide-react'
 import { useProgress } from '../store/progress'
 import { Button, Card } from './components'
 
@@ -9,21 +9,21 @@ export function Onboarding() {
       <h1 className="text-2xl font-bold">Before you start</h1>
       <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
-          <Share size={20} className="text-sage-strong" /> Add to the Home Screen
+          <Smartphone size={20} className="text-sage-strong" /> Install the app
         </div>
-        <p className="text-sm text-ink-muted">In Safari: Share → «Add to Home Screen». The app then works offline, and iOS keeps your progress.</p>
+        <p className="text-sm text-ink-muted">In Chrome: the ⋮ menu → «Add to Home screen» (or «Install app»). It then opens full-screen, works offline, and keeps the same progress as this Chrome tab.</p>
       </Card>
       <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
           <Keyboard size={20} className="text-sage-strong" /> Hebrew keyboard
         </div>
-        <p className="text-sm text-ink-muted">You type the answers in Hebrew — without vowel points. iPhone: Settings → General → Keyboard → Keyboards → Add New Keyboard → Hebrew. Mac: System Settings → Keyboard → Input Sources. Details are in Help.</p>
+        <p className="text-sm text-ink-muted">You type the answers in Hebrew — without vowel points. Gboard: Settings → System → Languages & input → On-screen keyboard → Gboard → Languages → add Hebrew; switch with the globe key. Details are in Help.</p>
       </Card>
       <Card className="flex flex-col gap-2">
         <div className="flex items-center gap-2 font-semibold">
           <Save size={20} className="text-sage-strong" /> Weekly backup
         </div>
-        <p className="text-sm text-ink-muted">Progress lives only on this device. Settings → «Backup» saves it as a file you can keep in Files or send to yourself.</p>
+        <p className="text-sm text-ink-muted">Progress lives only in Chrome on this phone. Settings → «Backup» opens the share sheet: save the file to Drive or Files, or send it to yourself.</p>
       </Card>
       <Button data-testid="onboarding-start" onClick={() => setSettings({ onboarded: true })}>
         Start

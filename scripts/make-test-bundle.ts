@@ -1,4 +1,4 @@
-// Builds a tiny dummy bundle for the Playwright smoke test into public/data-test/: three vocabulary entries,
+// Builds a tiny dummy bundle for the Playwright smoke test into public/data-test/: twelve vocabulary entries,
 // one verb with a future grid (לכתוב, ordinary pa'al — general Hebrew, nothing from the book), one grammar
 // topic, one exercise, one unit and one 1-second audio track synthesised here. The passphrase is public.
 // Deterministic salt and IV so the files are stable in git.
@@ -20,6 +20,16 @@ const bundle: BundleInput = {
     { id: 'u01-v001', unit: 1, pos: 'noun', he: 'סֵפֶר ז', lemma: f('סֵפֶר', 'ספר'), gender: 'm', ru: 'книга', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
     { id: 'u01-v002', unit: 1, pos: 'verb', he: 'כּוֹתֵב — לִכְתּוֹב', lemma: f('לִכְתּוֹב', 'לכתוב'), present: f('כּוֹתֵב', 'כותב'), ru: 'писать', verbId: 'v-ktb-paal', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
     { id: 'u01-v003', unit: 1, pos: 'adverb', he: 'תָּמִיד', lemma: f('תָּמִיד', 'תמיד'), ru: 'всегда', sources: [{ page: 8 }], reviewStatus: 'draft', flags: [] },
+    // nine more everyday words (general Hebrew, not the book) so «Today» holds a full batch of ten across clusters
+    { id: 'u01-v004', unit: 1, pos: 'noun', he: 'בַּיִת ז', lemma: f('בַּיִת', 'בית'), gender: 'm', ru: 'дом', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v005', unit: 1, pos: 'noun', he: 'שֻׁלְחָן ז', lemma: f('שֻׁלְחָן', 'שולחן'), gender: 'm', ru: 'стол', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v006', unit: 1, pos: 'noun', he: 'מַיִם ז״ר', lemma: f('מַיִם', 'מים'), gender: 'm', plural: 'only', ru: 'вода', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v007', unit: 1, pos: 'noun', he: 'יוֹם ז', lemma: f('יוֹם', 'יום'), gender: 'm', ru: 'день', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v008', unit: 1, pos: 'noun', he: 'עִיר נ', lemma: f('עִיר', 'עיר'), gender: 'f', ru: 'город', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v009', unit: 1, pos: 'adverb', he: 'עַכְשָׁו', lemma: f('עַכְשָׁו', 'עכשיו'), ru: 'сейчас', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v010', unit: 1, pos: 'adverb', he: 'מָחָר', lemma: f('מָחָר', 'מחר'), ru: 'завтра', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v011', unit: 1, pos: 'verb', he: 'לוֹמֵד — לִלְמוֹד', lemma: f('לִלְמוֹד', 'ללמוד'), present: f('לוֹמֵד', 'לומד'), ru: 'учить, учиться', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
+    { id: 'u01-v012', unit: 1, pos: 'adjective', he: 'גָּדוֹל', lemma: f('גָּדוֹל', 'גדול'), ru: 'большой', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
   ],
   verbs: [
     {
@@ -69,6 +79,6 @@ await writeFile(join(dir, 'audio', '01.enc'), encWav)
 await writeFile(join(dir, 'salt.json'), JSON.stringify({ version: 1, salt: SALT_HEX, iterations: ITER }, null, 2) + '\n')
 await writeFile(
   join(dir, 'manifest.json'),
-  JSON.stringify({ version: 1, builtAt: '2026-10-09T00:00:00.000Z', bundle: { file: 'bundle.enc', bytes: enc.length }, audio: [{ track: 1, file: 'audio/01.enc', bytes: encWav.length, type: 'audio/wav' }], counts: { u1: { total: 3, checked: 2 }, verbs: { total: 1, checked: 1 }, exercises: { total: 1, checked: 1 } } }, null, 2) + '\n',
+  JSON.stringify({ version: 1, builtAt: '2026-10-09T00:00:00.000Z', bundle: { file: 'bundle.enc', bytes: enc.length }, audio: [{ track: 1, file: 'audio/01.enc', bytes: encWav.length, type: 'audio/wav' }], counts: { u1: { total: 12, checked: 11 }, verbs: { total: 1, checked: 1 }, exercises: { total: 1, checked: 1 } } }, null, 2) + '\n',
 )
 console.log(`test bundle: ${bundle.vocab.length} vocab, 1 verb, 1 exercise, 1 WAV track → public/data-test/`)

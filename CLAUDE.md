@@ -10,7 +10,7 @@ passphrase (`.env.local`), or the kickoff prompt. Only ciphertext goes to `publi
 ## Commands
 
 ```sh
-pnpm dev / build / test / e2e        # app; e2e = Playwright WebKit iPhone 13 against `pnpm preview` with the dummy bundle
+pnpm dev / build / test / e2e        # app; e2e = Playwright Pixel 7 (Chromium) + iPhone 13 (WebKit) against `pnpm preview`, dummy bundle
 pnpm render --pages 54-55,8 --columns 8   # book pages → sources/pages/ (300 dpi; vocabulary column crops at 2×)
 pnpm diff-pass 54 [--accept 1]       # compare the two transcription passes; write the resolved pNNN.json
 pnpm import-book                     # sources/transcribed/pNNN.json → content/*.json (all draft) + content/import-report.md
@@ -48,7 +48,8 @@ pnpm icons                           # PWA icons from public/icon.svg
 ## Gates
 
 G1 — pp.54–55 + p.8 transcribed: Serhii reviews 20 entries, the pi'el screen, the לדבר / לספר grids.
-G2 — the deployed app on the iPhone: passphrase, Home Screen, offline, Hebrew typing in a grid, audio.
+G2 — the deployed app in Chrome on the Android phone (the only target, 2026-10-16): passphrase, ⋮ → Add to Home screen,
+airplane mode, share-sheet backup → Files, restore, Gboard Hebrew in a grid, audio, a deploy while a drill is open.
 G3 — before generating paradigms for every verb: five verbs across binyanim, cell by cell against the book.
 Ask, never assume: what the class covers next; whether English glosses are wanted.
 

@@ -3,7 +3,7 @@
   "builtAt": "2026-10-09T00:00:00.000Z",
   "bundle": {
     "file": "bundle.enc",
-    "bytes": 3695
+    "bytes": 5610
   },
   "audio": [
     {
@@ -15,8 +15,8 @@
   ],
   "counts": {
     "u1": {
-      "total": 3,
-      "checked": 2
+      "total": 12,
+      "checked": 11
     },
     "verbs": {
       "total": 1,

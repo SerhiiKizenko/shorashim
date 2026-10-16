@@ -7,7 +7,11 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   use: { baseURL: BASE_URL, trace: 'retain-on-failure' },
-  projects: [{ name: 'iphone', use: { ...devices['iPhone 13'] } }],
+  // Android Chrome is the target device (decision 2026-10-16); WebKit stays as a second engine.
+  projects: [
+    { name: 'android', use: { ...devices['Pixel 7'] } },
+    { name: 'iphone', use: { ...devices['iPhone 13'] } },
+  ],
   webServer: {
     command: 'pnpm preview --port 4173 --strictPort',
     url: BASE_URL,

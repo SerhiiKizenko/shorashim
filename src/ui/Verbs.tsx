@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { BINYAN_LABELS, BINYANIM, TENSE_LABELS, type Binyan, type Tense, type Verb } from '../content/schema'
 import { gridItemId } from '../engine/items'
-import { MASTERED_BOX } from '../engine/scheduler'
+import { isWeak, MASTERED_BOX } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress } from '../store/progress'
 import { Badge, Button, Card, Screen } from './components'
@@ -11,8 +11,8 @@ import { TenseFocus } from './TenseFocus'
 
 function Status({ verb, tense }: { verb: Verb; tense: Tense }) {
   const p = useProgress((s) => s.progress[gridItemId(verb.id, tense)])
-  const cls = !p ? 'bg-surface-2' : p.box <= 2 ? 'bg-bad' : p.box < MASTERED_BOX ? 'bg-sage' : 'bg-ok'
-  const title = !p ? 'not started' : p.box <= 2 ? 'weak' : p.box < MASTERED_BOX ? `box ${p.box}` : 'mastered'
+  const cls = !p ? 'bg-surface-2' : isWeak(p) ? 'bg-bad' : p.box < MASTERED_BOX ? 'bg-sage' : 'bg-ok'
+  const title = !p ? 'not started' : isWeak(p) ? 'weak' : p.box < MASTERED_BOX ? `box ${p.box}` : 'mastered'
   return <span title={title} className={`inline-block h-3 w-3 rounded-full ${cls}`} />
 }
 

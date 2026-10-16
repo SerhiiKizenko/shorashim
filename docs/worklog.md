@@ -81,3 +81,47 @@ Imported, validated, encrypted; pushed → deploy.
 the four open spots above; whether the 15 generated infinitive pointings are right. G2 on the iPhone (passphrase,
 Home Screen, offline, grid typing, audio). Then pp.18, 34, 50 (crops already rendered) and the rest of the
 session plan; session 3 as in the kickoff.
+
+## 2026-10-16 — session 3 (Android Chrome reliability pass: repeat-what-I-forget, backup/restore)
+
+**Scope (Serhii)**: the app is used only in Chrome on Android. Extensive test pass at phone width with the Chrome MCP,
+focus on how forgotten words come back and on backup/restore; ship every fix. Decisions: weak = failed and not yet
+recovered; Hard in box 1 → due tomorrow.
+
+**Test pass (dummy bundle, `?data=data-test`, Mac Chrome window at its 500 px minimum with the page held at 390 px)**:
+lock / key cache, Today with a grid typed by hand (Enter hops rows, wrong cell red with the printed form), exercise,
+vocab both directions (correct → Again off; wrong → only Again; final-letter slip → Again/Hard), Again requeue,
+same-day reopen, Weak spots, Settings (share-sheet backup stubbed in-page, cancelled share, download fallback,
+restore valid / older / garbage / broken, same file twice, reset, tense toggle, number field, theme), PWA cache,
+layout (no horizontal scroll on any screen), console clean. The dummy bundle got nine more everyday words (12 vocab)
+so «Today» holds a full batch of ten across clusters.
+
+**Confirmed and fixed**
+- A word graded Again ended the session in box 3, due in 3 days — every re-pass persisted a grade. Now only the first
+  answer per session counts (`shouldPersistGrade`); proved before/after by reading `sh.progress:data-test`.
+- «New per day» was per session: reopening Today added 4 more new the same day. Now `newAllowance` per calendar day;
+  Home shows «1 due · 0 new» after the ten.
+- Hard on a box-1 item replayed immediately (due today) → due tomorrow.
+- Offline open failed: `data/manifest.json` was not precached (the loader fetches it first) → precached with the bundle;
+  e2e proves a reload offline lands on Home (Chromium and WebKit both).
+- Restore replaced 10 items by an older 2-item file silently and the same file could not be picked twice → confirm
+  card with counts, picker cleared after every read. A cancelled share still downloaded a file → «Backup cancelled».
+- Auto-update reloaded the page mid-drill (shown live: the marker vanished 4 s after `registration.update()`) →
+  reload deferred while in `#/study/…`.
+- Weak = boxes 1–2 made 9 of 10 just-learned items «weak» → failed-and-not-recovered (2 of 11 after the same session).
+- Safari/iOS wording in Onboarding, Help and CLAUDE.md → Chrome on Android (⋮ → Add to Home screen, Gboard); «Hard»,
+  «Again», «Weak spots», «Keep your progress» and a new «Updates» card describe the rules above.
+- Small: «New items per day» snapped to 0 when cleared (draft kept while editing); «Weak spots» tile title wrapped at
+  390 px; the unit screen's «drill →» link was a 20 px target; Weak rows showed raw cluster ids (`paal:future`).
+- Not a finding: pull-to-refresh — `index.css` already sets `overscroll-behavior-y: none`.
+
+**Tests**: vitest 53 (new: hard-never-today, isWeak, newAllowance, shouldPersistGrade); Playwright now runs
+`android` (Pixel 7, Chromium — installed `playwright install chromium`) and `iphone` (WebKit), 5 tests each: smoke,
+Again-requeue-and-persistence + no second batch, backup download → reset → restore confirm → same file twice, offline
+reload. The driver gained `passCurrentCard` (answers any card from the dummy dictionary) and `get.progressOf`.
+
+**Follow-ups (not done)**: near the end of a session the two re-passes of a failed item come back-to-back (the
+reinsert index is clamped to the queue end); a session does not survive a tab discard (per-item progress does);
+`totalReviews` counts re-passes; the share path on the real phone and the exact Chrome/Gboard menu labels are G2.
+
+**Next**: Serhii's go-ahead to push (deploys), then the live drive at `?data=data-test`, then G2 on the phone.

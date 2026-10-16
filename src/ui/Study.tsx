@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { Tense } from '../content/schema'
 import { exerciseItemId, filterByFocus, gridItemId, parseItemId } from '../engine/items'
-import { buildExtraNewQueue, buildTodayQueue, buildTopicQueue, buildWeakQueue, currentCard, gradeInSession, isFinished, remaining, startSession, toDateString, type Grade, type ProgressMap, type SchedItem } from '../engine/scheduler'
+import { buildExtraNewQueue, buildTodayQueue, buildTopicQueue, buildWeakQueue, currentCard, gradeInSession, isFinished, newAllowance, remaining, shouldPersistGrade, startSession, toDateString, type Grade, type ProgressMap, type SchedItem } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress, type Settings } from '../store/progress'
 import { Button, Card, Screen } from './components'
@@ -17,7 +17,7 @@ function buildQueue(mode: string, params: URLSearchParams, items: SchedItem[], p
   const focused = filterByFocus(items, settings.tenseFocus)
   switch (mode) {
     case 'today':
-      return buildTodayQueue({ items: focused, progress, today, newLimit: settings.newPerDay })
+      return buildTodayQueue({ items: focused, progress, today, newLimit: newAllowance(progress, today, settings.newPerDay) })
     case 'extra':
       return buildExtraNewQueue(focused, progress, 10)
     case 'weak':
@@ -80,7 +80,8 @@ export function Study() {
 
   function onDone(g: Grade) {
     if (!id) return
-    grade(id, g, today)
+    // The schedule learns from the first answer only; a re-pass after «Again» is rehearsal (see shouldPersistGrade).
+    if (shouldPersistGrade(session, g)) grade(id, g, today)
     setSession((s) => gradeInSession(s, g, Math.random))
     window.scrollTo({ top: 0 })
   }

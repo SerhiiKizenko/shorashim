@@ -3,7 +3,7 @@ import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { TENSE_LABELS } from '../content/schema'
 import { filterByFocus } from '../engine/items'
-import { buildTodayQueue, isDue, MASTERED_BOX, toDateString } from '../engine/scheduler'
+import { buildTodayQueue, isDue, MASTERED_BOX, newAllowance, toDateString } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress } from '../store/progress'
 import { Card, plural, ProgressRing, Screen } from './components'
@@ -11,9 +11,9 @@ import { TenseFocus } from './TenseFocus'
 
 function ModeTile({ to, icon, title, hint, testId }: { to: string; icon: ReactNode; title: string; hint: string; testId?: string }) {
   return (
-    <Link to={to} data-testid={testId} className="flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl bg-surface-2 px-3 py-3 text-center active:opacity-80">
+    <Link to={to} data-testid={testId} className="flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl bg-surface-2 px-2 py-3 text-center active:opacity-80">
       <span className="text-sage-strong">{icon}</span>
-      <span className="font-semibold">{title}</span>
+      <span className="whitespace-nowrap font-semibold">{title}</span>
       <span className="text-xs text-ink-muted">{hint}</span>
     </Link>
   )
@@ -31,10 +31,11 @@ export function Home() {
     const focused = filterByFocus(items, settings.tenseFocus)
     const due = focused.filter((c) => progress[c.id] && isDue(progress[c.id]!, today)).length
     const unseen = focused.filter((c) => !progress[c.id]).length
-    const fresh = Math.min(unseen, settings.newPerDay)
+    const allowance = newAllowance(progress, today, settings.newPerDay)
+    const fresh = Math.min(unseen, allowance)
     const seen = focused.length - unseen
     const mastered = focused.filter((c) => progress[c.id]?.box === MASTERED_BOX).length
-    const todayCount = buildTodayQueue({ items: focused, progress, today, newLimit: settings.newPerDay }).length
+    const todayCount = buildTodayQueue({ items: focused, progress, today, newLimit: allowance }).length
     return { due, fresh, seen, mastered, todayCount, total: focused.length }
   }, [items, progress, today, settings.newPerDay, settings.tenseFocus])
 

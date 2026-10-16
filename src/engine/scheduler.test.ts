@@ -14,7 +14,10 @@ import {
   interleaveByCluster,
   isDue,
   isFinished,
+  isWeak,
   MASTERED_BOX,
+  newAllowance,
+  shouldPersistGrade,
   startSession,
   type Box,
   type ItemProgress,
@@ -48,10 +51,14 @@ describe('applyGrade (open-ended Leitner)', () => {
     expect(p.due).toBe(T)
     expect(p.lapses).toBe(1)
   })
-  it('hard keeps the box and reschedules by its interval', () => {
+  it('hard keeps the box and reschedules by its interval, but never the same day', () => {
     const p = applyGrade(prog(3, T), 'hard', T)
     expect(p.box).toBe(3)
     expect(p.due).toBe(addDays(T, 3))
+    const fresh = applyGrade(undefined, 'hard', T)
+    expect(fresh.box).toBe(1)
+    expect(fresh.due).toBe('2026-10-10')
+    expect(applyGrade(prog(1, T, { lapses: 1 }), 'hard', T).due).toBe('2026-10-10')
   })
   it('climbs 1 → 7 with the intervals 1 / 3 / 7 / 14 / 30 / 60 days', () => {
     let p = applyGrade(undefined, 'good', T)
@@ -111,8 +118,11 @@ describe('topic / weak / extra queues', () => {
     expect(buildTopicQueue(items, progress, T, (c) => c.cluster === 'u1:verb')).toEqual(['a2', 'a1'])
     expect(buildTopicQueue(items, progress, T, (c) => c.unit === 1)).toEqual(['a2', 'b1', 'a1'])
   })
-  it('weak queue holds boxes 1–2 only', () => {
-    expect(buildWeakQueue(items, progress)).toEqual(['a2'])
+  it('weak queue holds failed items not yet recovered: box 1, or box 2 after a lapse', () => {
+    const weakProgress: ProgressMap = { ...progress, t1: prog(2, T), m1: prog(2, T, { lapses: 1 }) }
+    expect(buildWeakQueue(items, weakProgress)).toEqual(['a2', 'm1'])
+    expect(isWeak(prog(2, T))).toBe(false)
+    expect(isWeak(prog(3, T, { lapses: 2 }))).toBe(false)
   })
   it('extra-new queue takes the next unseen items across clusters', () => {
     expect(buildExtraNewQueue(items, progress, 3)).toEqual(['b1', 'm1', 't1'])
@@ -121,6 +131,16 @@ describe('topic / weak / extra queues', () => {
   it('clusterStats counts unseen / weak / learning / mastered', () => {
     const s = clusterStats(items, progress).find((x) => x.cluster === 'u1:verb')!
     expect(s).toMatchObject({ unit: 1, kind: 'vocab', total: 2, unseen: 0, weak: 1, learning: 1, mastered: 0 })
+  })
+})
+
+describe('newAllowance (new items per calendar day)', () => {
+  it('subtracts the items first seen today, whatever mode introduced them', () => {
+    const progress: ProgressMap = { a: prog(2, T), b: prog(1, T), c: prog(2, T, { introduced: '2026-10-08' }) }
+    expect(newAllowance(progress, T, 10)).toBe(8)
+    expect(newAllowance(progress, T, 1)).toBe(0)
+    expect(newAllowance(progress, '2026-10-10', 10)).toBe(10)
+    expect(newAllowance({}, T, 0)).toBe(0)
   })
 })
 
@@ -138,6 +158,16 @@ describe('in-session requeue', () => {
     while (!isFinished(s)) s = gradeInSession(s, 'good', () => 0)
     expect(s.done).toBe(8)
     expect(s.queue.length).toBe(10)
+  })
+  it('persists the first grade only, plus any later «Again»', () => {
+    let s = startSession(['c1', 'c2'])
+    expect(shouldPersistGrade(s, 'again')).toBe(true)
+    s = gradeInSession(s, 'again', () => 0) // c1 fails → comes back after c2
+    expect(shouldPersistGrade(s, 'good')).toBe(true) // c2, first time
+    s = gradeInSession(s, 'good', () => 0)
+    expect(currentCard(s)).toBe('c1')
+    expect(shouldPersistGrade(s, 'good')).toBe(false) // re-pass: rehearsal, not evidence
+    expect(shouldPersistGrade(s, 'again')).toBe(true) // a second lapse still counts
   })
   it('a never-failed item leaves after one pass', () => {
     let s = startSession(['x', 'y'])

@@ -44,3 +44,24 @@ entries below are what this session added or made concrete.
   dagesh, shin/sin dots, shva and holam dots survive the 300-dpi scan only sporadically. For those marks the standard
   orthography is recorded and the page note says so; letter-level and bar-shaped vowel differences are settled at
   600 dpi (p.8: לִכְעֹס without vav, «יותר מכול» with vav). Serhii or the teacher checks the physical book at G1.
+- **2026-10-16 — The target browser is Chrome on Android; Safari/iPhone is dropped.** Chrome on Android is Blink, so
+  the Mac Chrome MCP at phone width is the same engine; Playwright runs a Pixel 7 (Chromium) project first and keeps
+  the iPhone 13 (WebKit) project as a second engine. Help and Onboarding describe Chrome's ⋮ → «Add to Home screen»
+  and Gboard; the installed app shares Chrome's storage, so Backup/Restore is for a new phone, not for the install.
+- **2026-10-16 — The schedule learns from the first answer to an item in a session only.** The two forced re-passes
+  after «Again» are rehearsal (learning steps), not evidence for a longer interval; a fresh «Again» on a re-pass is a
+  real lapse and is recorded. Before this rule a word failed once ended the same session in box 3, due in 3 days
+  (`shouldPersistGrade` in `src/engine/scheduler.ts`; proved with the dummy bundle in Chrome and in e2e).
+- **2026-10-16 — «New items per day» is counted per calendar day.** `newAllowance` subtracts the items first seen
+  today, whatever mode introduced them; reopening «Today» brings only what is due. «More new» stays an explicit override.
+- **2026-10-16 — «Hard» never comes back the same day.** It keeps the box; a box-1 item (interval 0) is due tomorrow.
+  «Again» keeps due = today, so a failed word stays in «Today» until it is answered right in a later session.
+- **2026-10-16 — Weak = failed and not yet recovered:** box 1, or box 2 reached after a lapse (`isWeak`). A new item
+  answered Good once is young, not weak. Used by the Weak screen, the Verbs status dot and the Units bar alike.
+- **2026-10-16 — `data/manifest.json` is precached with the bundle** (and the dummy bundle's two files, so the offline
+  e2e test can run). The loader reads the manifest first; offline starts failed while it was network-only. Bundle and
+  manifest now update together with the service worker.
+- **2026-10-16 — A new build reloads the page only outside a drill.** `registerSW` gets `onNeedReload`; while the hash
+  is `#/study/…` the reload waits for the next navigation away. The auto-update itself stays on.
+- **2026-10-16 — Restore asks first.** The file is validated, then a card shows its date, item and review counts next
+  to the device's count; «Replace» applies it. A cancelled share sheet saves nothing (no download behind it).

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { UNIT_LETTERS } from '../content/schema'
-import { MASTERED_BOX } from '../engine/scheduler'
+import { isWeak, MASTERED_BOX } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress } from '../store/progress'
 import { Card, Screen } from './components'
@@ -30,7 +30,7 @@ export function Units() {
         for (const i of mine) {
           const p = progress[i.id]
           if (!p) stat.unseen++
-          else if (p.box <= 2) stat.weak++
+          else if (isWeak(p)) stat.weak++
           else if (p.box < MASTERED_BOX) stat.learning++
           else stat.mastered++
         }
