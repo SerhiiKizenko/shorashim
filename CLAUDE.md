@@ -18,7 +18,10 @@ passphrase into any automation (Chrome MCP, Playwright): every drive uses the du
 pnpm dev / build / test / e2e        # app; test = vitest; e2e = Playwright `android` (Pixel 7, Chromium) + `iphone` (iPhone 13, WebKit)
 pnpm e2e --project=android           # one project; browsers: `pnpm exec playwright install chromium webkit` after a Playwright bump
 pnpm render --pages 54-55,8 --columns 8   # book pages → sources/pages/ (300 dpi; vocabulary column crops at 2×)
-pnpm diff-pass 54 [--accept 1]       # compare the two transcription passes; write the resolved pNNN.json
+pnpm intake <pdf…>                   # homework PDFs → MATERIALS_DIR/teacher/intake (md5, idempotent) + renders in sources/intake/<md5:8>/
+pnpm intake --assign <md5:8> 1=workbook:40 …   # which book and printed page each render is → sources/pages/<book>/; --status
+pnpm check-pass <file>               # one transcription pass against the schema and the workbook conventions
+pnpm diff-pass [workbook] 54 [--accept 1]   # compare the two transcription passes; write the resolved pNNN.json
 pnpm import-book                     # sources/transcribed/pNNN.json → content/*.json (all draft) + content/import-report.md
 pnpm find "להבטיח"                   # niqqud-insensitive search over the transcriptions
 pnpm apply-verified content/verified/<batch>.ts   # merge a verification patch + validate
@@ -35,8 +38,10 @@ pnpm icons                           # PWA icons from public/icon.svg
 - `src/content/schema.ts` — the content model (zod), shared by scripts and app; `src/content/load.ts` fetch +
   decrypt (`?data=<dir>` picks the data directory for the tab; storage keys get a `:<dir>` suffix);
   `src/content/audio.ts` track decrypt → Blob URL, speech synthesis.
-- `src/engine/answer.ts` — Hebrew answer normaliser and checker (pure, tested); `src/engine/scheduler.ts` —
-  open-ended Leitner (pure, tested; the rules below); `src/engine/items.ts` — bundle → schedule items, tense focus.
+- `src/engine/answer.ts` — Hebrew answer normaliser, checker, mistake classes and letter alignment (pure, tested);
+  `src/engine/scheduler.ts` — open-ended Leitner with fuzz, forecast, catch-up (pure, tested; the rules below);
+  `src/engine/items.ts` — bundle → schedule items, tense focus, mixed cells; `src/engine/choice.ts` — 4-choice
+  options; `src/engine/habit.ts` — week dots, answers per day.
 - `src/store/progress.ts` (localStorage `sh.progress[:dir]`, backup/restore schema, tense focus, per-cell stats),
   `src/store/content.ts` (unlock, cached raw key `sh.rawKey[:dir]`).
 - `src/ui/` — screens (`Home`, `Study` + `drills/`, `Verbs`, `Units`, `UnitScreen`, `GrammarTopic`, `Listen`,
@@ -46,11 +51,14 @@ pnpm icons                           # PWA icons from public/icon.svg
 - `vite.config.ts` — PWA: precache = shell + `data/bundle.enc` + `data/manifest.json` (+ the dummy bundle's two
   files); audio is runtime-cached on first play, never precached.
 - `e2e/` — `smoke.spec.ts` + `drivers/trainer.driver.ts` (given / when / get; `TEST_IDS`, `DUMMY_ANSWERS`,
-  `when.passCurrentCard()` answers any card, `get.progressOf(id)` reads the stored schedule entry).
-- `scripts/` — pipeline (Node/tsx); `scripts/lib/paths.ts` holds every path; `scripts/lib/transcription.ts` the
-  per-page transcription record; `scripts/lib/piel-future.ts` the p.54 pattern as data;
-  `scripts/make-test-bundle.ts` the dummy bundle (12 everyday words, לכתוב future + past, 1 exercise, 1 WAV track;
-  general Hebrew, nothing from the book).
+  `DUMMY_GLOSSES`, `KTOV_CELLS`; `given.progress(state)` seeds the store before load; `when.passCurrentCard()`
+  answers any card — grid, single cell, exercise, 4-choice, typed; `get.progressOf(id)`, `get.reviews()`).
+- `scripts/` — pipeline (Node/tsx); `scripts/lib/paths.ts` holds every path (per-book dirs `sources/{pages,transcribed}/<book>/`);
+  `scripts/lib/transcription.ts` the per-page transcription record; `scripts/lib/piel-future.ts` the p.54 pattern as
+  data (pointed); `scripts/lib/paradigm.ts` plain paradigms for pi'el / hif'il / hitpa'el (the importer fills unprinted
+  cells, flags them `generated`, and reports every printed cell the pattern does not reproduce);
+  `scripts/make-test-bundle.ts` the dummy bundle (12 everyday words, לכתוב future + past + present, 1 exercise, a
+  workbook topic `wb-s1` with a «sort into the table» exercise, 1 WAV track; general Hebrew, nothing from the book).
 - `content/` (gitignored) — `{vocab,verbs,grammar,exercises,texts,proverbs,prepositions,units,audio}.json`,
   `verified/*.ts`, `inventory.json`, `import-report.md`. `sources/` (gitignored) — `pages/`, `transcribed/`.
 
@@ -68,6 +76,15 @@ pnpm icons                           # PWA icons from public/icon.svg
   status dot and the Units bar alike.
 - Grid and exercise grades come from first-try mistakes: none → Good, one or two → Hard, more or «Finish anyway» → Again.
 - Restore validates the file and asks before replacing; a cancelled share sheet saves nothing.
+- **Due dates are fuzzed** (Anki's bands: none under 2.5 d; ± 1 d + 15/10/5 %) onto the lightest day (`spreadDue`); the
+  store passes the spread, `applyGrade` without one is exact (tests). **Catch-up** when due > `reviewsPerDay` (100):
+  oldest first, capped, no new items, no mixed cells.
+- **Vocabulary card by box at session start** (`vocabMode`, snapshot in `Study.tsx`): new / box 1 → 4-choice Hebrew →
+  meaning; box ≥ 2 → typed. Hint → only Hard. From box 4 the answer shows unpointed first.
+- **Review log** `reviews: [id, day, grade, errorClass?]`: persisted grades only; feeds the week dots, «answered
+  today», the session bar and «Kinds of mistake». **Leech** = ≥ 8 lapses → «Ask the teacher», never suspended.
+- **Mixed cells** after Today (`buildMixedCells`): grids in box ≥ 2, not due, not reviewed today; cell stats only.
+- New stored fields always get a default (backup stays v1; `mergePersisted` fills settings).
 
 ## Testing in Chrome (MCP)
 
@@ -76,6 +93,9 @@ pnpm icons                           # PWA icons from public/icon.svg
 - The Mac Chrome window will not go below 500 px wide: hold the page at 390 px with an injected style
   (`html,body{width:390px}`); `resize_window` only helps with height.
 - Read state with `JSON.parse(localStorage['sh.progress:data-test'])`. Drive buttons through `data-testid`s.
+- After a rebuild the first load is still the previous build (the old service worker answers); outside `#/study/…` it
+  reloads itself within ~4 s. Check for a marker of the new build before judging the UI. To seed a state, write
+  `sh.progress:data-test` (`{state, version: 1}`) and navigate with a new query param.
 - Avoid native dialogs: stub `navigator.canShare`/`share` and `HTMLAnchorElement.prototype.click` for Backup; feed
   Restore through a `DataTransfer` on the hidden file input + a `change` event.
 - `navigate` to the same URL with only a different hash is a same-document navigation (the in-memory store

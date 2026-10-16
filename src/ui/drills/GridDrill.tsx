@@ -1,7 +1,7 @@
 import { BINYAN_LABELS, GRID_COLUMNS, TENSE_LABELS, type Tense, type Verb } from '../../content/schema'
 import type { Grade } from '../../engine/scheduler'
 import { useProgress } from '../../store/progress'
-import { Badge, Card, DraftNote, Pages } from '../components'
+import { Badge, Card, DraftNote, Sources } from '../components'
 import { HebrewText, Pointed } from '../hebrew'
 import { ParadigmGrid, type GridOutcome } from '../ParadigmGrid'
 
@@ -18,7 +18,7 @@ export function GridDrill({ verb, tense, today, onDone }: { verb: Verb; tense: T
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="lavender">{BINYAN_LABELS[verb.binyan].en}</Badge>
         <Badge tone="mist">{TENSE_LABELS[tense].en}</Badge>
-        <Pages pages={verb.sources.map((s) => s.page)} />
+        <Sources sources={verb.sources} />
       </div>
       <Card>
         <ParadigmGrid

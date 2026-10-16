@@ -3,7 +3,7 @@
 // `unreadable` flag; `plain` only when it differs from the pointed form with its marks stripped (the importer
 // derives the rest); nothing invented.
 import { z } from 'zod'
-import { BinyanSchema, ExerciseKind, FlagSchema, HebrewFormSchema, PosSchema, RootGroupSchema, TenseSchema } from '../../src/content/schema'
+import { BinyanSchema, BookIdSchema, ExerciseKind, FlagSchema, HebrewFormSchema, MAIN_BOOK, PosSchema, RootGroupSchema, TenseSchema } from '../../src/content/schema'
 
 const Form = z.object({ pointed: z.string().min(1), plain: z.string().min(1).optional(), variants: z.array(z.string()).optional() }).strict()
 
@@ -35,6 +35,8 @@ export const TVerb = z
     government: z.string().optional(),
     /** cells the page prints, per tense */
     forms: z.partialRecord(TenseSchema, z.record(z.string(), Form)).optional(),
+    /** שם הפעולה, when the page prints it */
+    verbalNoun: Form.optional(),
     flags: z.array(FlagSchema).default([]),
     notes: z.string().optional(),
   })
@@ -73,6 +75,11 @@ export const TExercise = z
           prompt: z.string().min(1),
           hint: z.string().optional(),
           tense: TenseSchema.optional(),
+          /** the verb the blank asks for (plain infinitive) and the person cell(s) the sentence implies; or
+           * `ask` for the infinitive / verbal noun. The importer derives the answer from the verb's paradigm. */
+          verb: z.string().optional(),
+          cells: z.array(z.string()).optional(),
+          ask: z.enum(['infinitive', 'verbalNoun']).optional(),
           /** filled from the answer key page, if the page itself prints an example answer */
           answers: z.array(z.string()).optional(),
           flags: z.array(FlagSchema).default([]),
@@ -100,6 +107,8 @@ export const TProverb = z.object({ he: z.string().min(1), ru: z.string().optiona
 export const TranscriptionSchema = z
   .object({
     page: z.number().int().positive(),
+    /** which book the page is from; its printed page number is `page` */
+    book: BookIdSchema.default(MAIN_BOOK),
     unit: z.number().int().min(1).max(13).nullable(),
     kind: z.enum(['vocab', 'grammar', 'exercises', 'key', 'text', 'proverbs', 'instructions', 'mixed']),
     pass: z.union([z.literal(1), z.literal(2)]),

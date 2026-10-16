@@ -1,9 +1,11 @@
-import { Keyboard, Save, Smartphone } from 'lucide-react'
+import { Coffee, Keyboard, Save, Smartphone } from 'lucide-react'
+import { useState } from 'react'
 import { useProgress } from '../store/progress'
 import { Button, Card } from './components'
 
 export function Onboarding() {
   const setSettings = useProgress((s) => s.setSettings)
+  const [anchor, setAnchor] = useState('')
   return (
     <main className="safe-top safe-bottom safe-x mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-5">
       <h1 className="text-2xl font-bold">Before you start</h1>
@@ -25,7 +27,23 @@ export function Onboarding() {
         </div>
         <p className="text-sm text-ink-muted">Progress lives only in Chrome on this phone. Settings → «Backup» opens the share sheet: save the file to Drive or Files, or send it to yourself.</p>
       </Card>
-      <Button data-testid="onboarding-start" onClick={() => setSettings({ onboarded: true })}>
+      <Card className="flex flex-col gap-2">
+        <label htmlFor="onboarding-anchor" className="flex items-center gap-2 font-semibold">
+          <Coffee size={20} className="text-sage-strong" /> After which daily thing will you open this?
+        </label>
+        <input
+          id="onboarding-anchor"
+          data-testid="onboarding-anchor"
+          type="text"
+          maxLength={60}
+          value={anchor}
+          placeholder="morning coffee"
+          onChange={(e) => setAnchor(e.target.value)}
+          className="min-h-12 rounded-2xl border border-surface-2 bg-bg px-4 text-base"
+        />
+        <p className="text-sm text-ink-muted">A plan of the form «after X, I do Y» makes a habit far more likely than a good intention. Optional; change it in Settings.</p>
+      </Card>
+      <Button data-testid="onboarding-start" onClick={() => setSettings({ onboarded: true, ...(anchor.trim() ? { anchor: anchor.trim() } : {}) })}>
         Start
       </Button>
     </main>

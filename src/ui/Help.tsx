@@ -7,7 +7,13 @@ export function Help() {
       <div className="flex flex-col gap-4 pt-2 pb-6">
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Start with «Today»</h2>
-          <p className="text-ink-muted">Reviews come first, then new items in book order — as many as «New items per day» allows, counted per calendar day: reopening «Today» later the same day brings only what is due. Have time left? «10 more new» on the finish screen.</p>
+          <p className="text-ink-muted">Reviews come first, then new items in book order — as many as «New items per day» allows, counted per calendar day: reopening «Today» later the same day brings only what is due. Then up to ten single verb forms, mixed across verbs and tenses you already know. Have time left? «10 more new» on the finish screen; the bars above it show what is coming in the next two weeks.</p>
+          <p className="text-ink-muted">Due dates are spread a little (a word due in 7 days may come in 5 to 9), onto the lightest day, so a whole vocabulary page does not land on one morning. After a break, when more is due than «Reviews per day», «Today» catches up: the oldest first, no new items until the pile is down.</p>
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <h2 className="font-semibold">How a word is asked</h2>
+          <p className="text-ink-muted">A new word, or one you got wrong, is shown in Hebrew and you pick its meaning out of four. Once you have it, it flips: the meaning is shown and you type the Hebrew. «Hint» gives the root (for a verb) or the first letter, then half the word; an answer after a hint counts as «Hard». From the fourth level on the answer is shown without vowel points, as Hebrew is printed outside textbooks — tap to see them.</p>
+          <p className="text-ink-muted">A wrong answer says what kind of mistake it was — a final letter, a missing or extra ו/י, one letter swapped, the beginning (the person prefix), the ending, or a different word — and marks the letters. Weak spots counts them over the last 30 days.</p>
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Type Hebrew without vowel points</h2>
@@ -37,15 +43,19 @@ export function Help() {
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Other modes</h2>
           <ul className="list-disc space-y-1 pl-5 text-ink-muted">
-            <li><b className="text-ink">Verbs</b> — grids, single forms and «which form is this?» for the tenses in focus.</li>
+            <li><b className="text-ink">Verbs</b> — grids, single forms, «from root» (only the root, the binyan and the tense are given: build the form from the pattern) and «which form is this?» for the tenses in focus.</li>
             <li><b className="text-ink">Units</b> — browse any unit: vocabulary, grammar with the book's explanation, exercises with the answer key, texts with audio.</li>
-            <li><b className="text-ink">Weak spots</b> — what you got wrong and have not yet got right twice since (plus single grid cells that keep failing). A new word answered Good once is young, not weak.</li>
+            <li><b className="text-ink">Weak spots</b> — what you got wrong and have not yet got right twice since (plus single grid cells that keep failing). A new word answered Good once is young, not weak. Items that failed eight times or more are listed under «Ask the teacher».</li>
             <li><b className="text-ink">Listen</b> — the book's recordings next to their page.</li>
           </ul>
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Marks on records</h2>
           <p className="text-ink-muted">«Draft» — transcribed but not yet checked against the page. «Generated» — a verb form that follows the book's pattern but is not printed in the book; confirm it with the teacher. Every record cites its page.</p>
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <h2 className="font-semibold">The seven dots</h2>
+          <p className="text-ink-muted">Home shows the last seven days, today last: a dot for each day you answered something. A missed day is just a grey dot that drops out after a week — there is no streak to lose.</p>
         </Card>
         <Card className="flex flex-col gap-2">
           <h2 className="font-semibold">Keep your progress</h2>

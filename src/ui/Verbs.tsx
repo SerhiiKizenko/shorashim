@@ -31,9 +31,10 @@ export function Verbs() {
       <div className="flex flex-col gap-4 pt-2">
         <Card><TenseFocus compact /></Card>
         {count ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Link to="/study/forms" className="block"><Button variant="secondary" className="w-full">One form</Button></Link>
-            <Link to="/study/which" className="block"><Button variant="secondary" className="w-full">Which form?</Button></Link>
+          <div className="grid grid-cols-3 gap-2">
+            <Link to="/study/forms" className="block"><Button variant="secondary" className="w-full px-2 text-sm">One form</Button></Link>
+            <Link to="/study/build" data-testid="verbs-build" className="block"><Button variant="secondary" className="w-full px-2 text-sm">From root</Button></Link>
+            <Link to="/study/which" className="block"><Button variant="secondary" className="w-full px-2 text-sm">Which form?</Button></Link>
           </div>
         ) : (
           <p className="py-6 text-center text-ink-muted">{focus.length ? 'No verbs for the selected tenses yet.' : 'Select a tense above.'}</p>
@@ -62,6 +63,7 @@ export function Verbs() {
                     </Link>
                   ))}
                   <Link to={`/study/forms?verb=${v.id}`} className="rounded-full bg-surface-2 px-3 py-2 text-sm text-ink-muted active:opacity-80">forms</Link>
+                  <Link to={`/study/build?verb=${v.id}`} data-testid={`verb-build-${v.id}`} className="rounded-full bg-surface-2 px-3 py-2 text-sm text-ink-muted active:opacity-80">from root</Link>
                   <Link to={`/study/which?verb=${v.id}`} className="rounded-full bg-surface-2 px-3 py-2 text-sm text-ink-muted active:opacity-80">which?</Link>
                 </div>
                 {v.reviewStatus === 'draft' ? <Badge tone="sand">draft</Badge> : null}

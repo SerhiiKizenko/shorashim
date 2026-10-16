@@ -6,6 +6,33 @@ import { BackupSchema, makeBackup, useProgress, type Backup } from '../store/pro
 import { Button, Card, Screen } from './components'
 import { TenseFocus } from './TenseFocus'
 
+/** A number setting that keeps what is typed while editing (an emptied field does not snap to 0) and stores only
+ * valid numbers at or above `min`. */
+function NumberSetting({ label, hint, value, min, testId, onValue }: { label: string; hint: string; value: number; min: number; testId: string; onValue: (n: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="font-semibold">{label}</span>
+      <input
+        data-testid={testId}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        value={draft ?? String(value)}
+        onChange={(e) => {
+          const text = e.target.value
+          setDraft(text)
+          const n = Number(text)
+          if (text.trim() !== '' && Number.isFinite(n)) onValue(Math.max(min, Math.floor(n)))
+        }}
+        onBlur={() => setDraft(null)}
+        className="min-h-12 rounded-2xl border border-surface-2 bg-bg px-4 text-base"
+      />
+      <span className="text-xs text-ink-muted">{hint}</span>
+    </label>
+  )
+}
+
 export function Settings() {
   const settings = useProgress((s) => s.settings)
   const setSettings = useProgress((s) => s.setSettings)
@@ -18,8 +45,6 @@ export function Settings() {
   const [confirmReset, setConfirmReset] = useState(false)
   /** a backup file read and validated, waiting for the learner to confirm the replacement */
   const [pending, setPending] = useState<Backup | null>(null)
-  /** what is typed in «New items per day» while editing; null = show the stored value */
-  const [newPerDayDraft, setNewPerDayDraft] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function backup() {
@@ -75,12 +100,6 @@ export function Settings() {
     setPending(null)
   }
 
-  function changeNewPerDay(text: string) {
-    setNewPerDayDraft(text)
-    const n = Number(text)
-    if (text.trim() !== '' && Number.isFinite(n)) setSettings({ newPerDay: Math.max(0, Math.floor(n)) })
-  }
-
   return (
     <Screen title="Settings" back="/">
       <div className="flex flex-col gap-4 pt-2">
@@ -88,19 +107,21 @@ export function Settings() {
           <TenseFocus />
         </Card>
         <Card className="flex flex-col gap-3">
+          <NumberSetting label="New items per day" testId="settings-new-per-day" min={0} value={settings.newPerDay} onValue={(n) => setSettings({ newPerDay: n })} hint="Counted per calendar day; reviews are always added on top. 10 is a steady pace next to a class." />
+          <NumberSetting label="Reviews per day" testId="settings-reviews-per-day" min={1} value={settings.reviewsPerDay} onValue={(n) => setSettings({ reviewsPerDay: n })} hint="When more than this is due (after a break), «Today» catches up: the oldest first, this many a day, no new items until the pile is down." />
+          <NumberSetting label="Mixed verb cells after «Today»" testId="settings-mixed-cells" min={0} value={settings.mixedCells} onValue={(n) => setSettings({ mixedCells: n })} hint="Single forms from verbs you already know, mixed across binyanim and tenses. 0 turns them off." />
           <label className="flex flex-col gap-1">
-            <span className="font-semibold">New items per day</span>
+            <span className="font-semibold">I study after…</span>
             <input
-              data-testid="settings-new-per-day"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={newPerDayDraft ?? String(settings.newPerDay)}
-              onChange={(e) => changeNewPerDay(e.target.value)}
-              onBlur={() => setNewPerDayDraft(null)}
+              data-testid="settings-anchor"
+              type="text"
+              maxLength={60}
+              value={settings.anchor ?? ''}
+              placeholder="morning coffee"
+              onChange={(e) => setSettings({ anchor: e.target.value.trim() ? e.target.value : undefined })}
               className="min-h-12 rounded-2xl border border-surface-2 bg-bg px-4 text-base"
             />
-            <span className="text-xs text-ink-muted">Counted per calendar day; reviews are always added on top. 10 is a steady pace next to a class.</span>
+            <span className="text-xs text-ink-muted">Tying practice to something you already do every day is what makes it stick. Home shows it above «Today».</span>
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-semibold">Theme</span>

@@ -65,3 +65,37 @@ entries below are what this session added or made concrete.
   is `#/study/…` the reload waits for the next navigation away. The auto-update itself stays on.
 - **2026-10-16 — Restore asks first.** The file is validated, then a card shows its date, item and review counts next
   to the device's count; «Replace» applies it. A cancelled share sheet saves nothing (no download behind it).
+- **2026-10-16 — Leitner stays; FSRS is deferred.** The research found total spacing matters more than the ladder's
+  shape; FSRS's gain is per-item adaptivity, which needs a review history. The review log starts now, so the switch
+  stays possible.
+- **2026-10-16 — Due dates are fuzzed and load-balanced** with Anki's published bands (no fuzz under 2.5 days, else
+  ± 1 day + 15 % / 10 % / 5 % of the interval's parts in 2.5–7 / 7–20 / 20+ days), onto the day with the fewest items
+  due; ties at random. Reimplemented from the numbers (Anki's code is AGPL). `applyGrade` stays exact without a
+  spread, so the ladder tests are unchanged.
+- **2026-10-16 — Catch-up above «Reviews per day» (default 100).** Steady state at 10 new a day is about 50 reviews.
+  Above the budget: oldest first, capped, no new items, no mixed cells. «More new» stays an override.
+- **2026-10-16 — A vocabulary card asks by its box at the start of the session:** new or box 1 → 4-choice (Hebrew →
+  meaning), box ≥ 2 → typed (meaning → Hebrew). A choice can lift a word to box 2 only. Replaces the `reps % 2`
+  alternation. A hinted correct answer allows only «Hard».
+- **2026-10-16 — Mistakes are classified, not just marked wrong:** final letter, vowel letter (an inserted or missing
+  ו/י — a swapped ו↔י is an ending), one letter, beginning, ending, other. Recorded with the review whenever the typed
+  answer was wrong.
+- **2026-10-16 — Mixed cells never grade a grid.** They interleave single forms from grids in box ≥ 2 that are not
+  due and not reviewed today; results go to cell stats only, like «One form».
+- **2026-10-16 — No streak in the UI:** seven dots for a rolling week (not Monday-based: the Israeli week starts on
+  Sunday). `stats.streak` stays in the backup. No points, badges or leagues.
+- **2026-10-16 — New stored fields get defaults instead of a backup version bump.** A v1 backup restores unchanged;
+  `mergePersisted` fills settings added after a state was stored.
+- **2026-10-16 — Both transcription passes of the workbook are fresh subagents** with the same brief; the session
+  only resolves. The two readings stay independent, and the brief (CONTENT-RULES §workbook) is the one place the
+  conventions live.
+- **2026-10-16 — Partial pointing is recorded as printed when the omission is systematic** (p.49: the shva under פ is
+  absent in 19 cells while the present prints it; p.41: four dots both readers miss although the same marks show
+  elsewhere). The «standard orthography for dot-sized marks» rule stays for marks the scan loses sporadically.
+- **2026-10-16 — Workbook answers are derived, not typed in:** the transcriber records the verb, tense and person
+  cells of each blank; the importer takes the verb's cell (printed first, generated second, flagged). A printed
+  example answer wins. A blank after a printed ל expects the rest of the infinitive.
+- **2026-10-16 — Plain-only generation for pi'el / hif'il / hitpa'el,** `pointed` = `plain` for generated cells;
+  weak roots get nothing. The importer compares the pattern with every printed cell on every import (G3 in code).
+- **2026-10-16 — Russian glosses for workbook verbs come from general usage** (`glosses.json`), each word card
+  flagged `unsupported` until the teacher confirms.

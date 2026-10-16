@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "builtAt": "2026-10-09T16:12:57.369Z",
+  "builtAt": "2026-10-16T11:36:12.126Z",
   "bundle": {
     "file": "bundle.enc",
-    "bytes": 39666
+    "bytes": 298046
   },
   "audio": [
     {
@@ -132,12 +132,16 @@
       "total": 0,
       "checked": 0
     },
+    "workbook": {
+      "total": 57,
+      "checked": 0
+    },
     "verbs": {
-      "total": 16,
+      "total": 71,
       "checked": 0
     },
     "exercises": {
-      "total": 2,
+      "total": 12,
       "checked": 0
     }
   }

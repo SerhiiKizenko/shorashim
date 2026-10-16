@@ -1,6 +1,7 @@
 // Pure Leitner scheduler with open-ended intervals (no exam date). No I/O, no Date.now(): the caller passes
 // `today` as 'YYYY-MM-DD' and a random source, so everything here is unit-testable and deterministic.
-import type { Tense } from '../content/schema'
+import { BOOKS, type BookId, type Tense } from '../content/schema'
+import type { ErrorClass } from './answer'
 
 export type Box = 1 | 2 | 3 | 4 | 5 | 6 | 7
 /** Self-grade: «Again» → again, «Hard» → hard, «Good» → good. */
@@ -22,15 +23,22 @@ export interface ItemProgress {
 }
 export type ProgressMap = Record<string, ItemProgress>
 
+/** One persisted answer in the review log: item id, local day, grade, and — when the typed answer was wrong — what
+ * kind of mistake it was. A tuple, not an object, so a year of answers stays small in localStorage. */
+export type ReviewEntry = [itemId: string, day: string, grade: Grade] | [itemId: string, day: string, grade: Grade, error: ErrorClass]
+
 export type ItemKind = 'vocab' | 'grid' | 'exercise' | 'prep'
 /** One schedule item: a vocabulary entry, a verb × tense grid, a book exercise or a preposition paradigm. */
 export interface SchedItem {
   id: string
   kind: ItemKind
-  unit: number
-  /** interleaving key, e.g. `u01:verb`, `piel:future`, `u04:ex` */
+  /** the book the item comes from; with `unit` it gives the book order of new items */
+  book: BookId
+  /** main-book unit, or null for an item of another book (the workbook has no units) */
+  unit: number | null
+  /** interleaving key, e.g. `u01:verb`, `piel:future`, `u04:ex`, `workbook:ex` */
   cluster: string
-  /** book order inside the unit */
+  /** book order inside the unit (or inside the other book) */
   order: number
   /** tenses the item drills (a grid has one; an exercise the tenses of its tagged items); absent = always on */
   tenses?: Tense[]
@@ -54,7 +62,56 @@ export function toDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export function applyGrade(prev: ItemProgress | undefined, grade: Grade, today: string): ItemProgress {
+// ---------------------------------------------------------------- fuzz and load balancing
+/** Anki's fuzz bands (rslib/src/scheduler/states/fuzz.rs; the published numbers, reimplemented): no fuzz under 2.5
+ * days, above that ± (1 day + 15 % of the part of the interval between 2.5 and 7 days + 10 % of the part between 7
+ * and 20 + 5 % of the part above 20). Our boxes: 3 → 2–4, 7 → 5–9, 14 → 12–16, 30 → 27–33, 60 → 55–65. */
+const FUZZ_BANDS = [
+  { start: 2.5, end: 7, factor: 0.15 },
+  { start: 7, end: 20, factor: 0.1 },
+  { start: 20, end: Infinity, factor: 0.05 },
+] as const
+
+/** The days an item with this interval may land on: [lowest, highest], in days from today. */
+export function fuzzWindow(interval: number): [number, number] {
+  if (interval < 2.5) return [interval, interval]
+  let delta = 1
+  for (const b of FUZZ_BANDS) delta += b.factor * Math.max(0, Math.min(interval, b.end) - b.start)
+  return [Math.max(1, Math.round(interval - delta)), Math.round(interval + delta)]
+}
+
+/** How many items are due on each day, from the stored schedule: the load the balancer spreads against. */
+export function dueHistogram(progress: ProgressMap): Record<string, number> {
+  const h: Record<string, number> = {}
+  for (const p of Object.values(progress)) h[p.due] = (h[p.due] ?? 0) + 1
+  return h
+}
+
+/** What applyGrade needs to spread due dates: a random source and the current load per day. */
+export interface Spread {
+  rand: () => number
+  load: Record<string, number>
+}
+
+/** The due date for an interval: inside its fuzz window, the day with the fewest items already due; ties at random.
+ * With no load at all this is plain fuzz, so the forty words of one vocabulary page stop landing on one day. */
+export function spreadDue(today: string, interval: number, s: Spread): string {
+  const [lo, hi] = fuzzWindow(interval)
+  let best: string[] = []
+  let bestLoad = Infinity
+  for (let d = lo; d <= hi; d++) {
+    const day = addDays(today, d)
+    const load = s.load[day] ?? 0
+    if (load < bestLoad) {
+      bestLoad = load
+      best = [day]
+    } else if (load === bestLoad) best.push(day)
+  }
+  return best[Math.floor(s.rand() * best.length)] ?? addDays(today, interval)
+}
+
+/** Without `spread` the due date is exact (box interval); the store passes one so real schedules are fuzzed. */
+export function applyGrade(prev: ItemProgress | undefined, grade: Grade, today: string, spread?: Spread): ItemProgress {
   const base: ItemProgress = prev ?? { box: 1, due: today, introduced: today, lastReviewed: null, lastGrade: null, reps: 0, lapses: 0 }
   let box: Box = base.box
   let lapses = base.lapses
@@ -66,7 +123,8 @@ export function applyGrade(prev: ItemProgress | undefined, grade: Grade, today: 
   }
   // «Hard» keeps the box but never comes back the same day: a box-1 item rests until tomorrow (decision 2026-10-16).
   const days = grade === 'hard' ? Math.max(1, BOX_INTERVAL_DAYS[box]) : BOX_INTERVAL_DAYS[box]
-  return { ...base, box, due: addDays(today, days), lastReviewed: today, lastGrade: grade, reps: base.reps + 1, lapses }
+  const due = spread ? spreadDue(today, days, spread) : addDays(today, days)
+  return { ...base, box, due, lastReviewed: today, lastGrade: grade, reps: base.reps + 1, lapses }
 }
 
 export const isDue = (p: ItemProgress, today: string): boolean => p.due <= today
@@ -74,6 +132,33 @@ export const isDue = (p: ItemProgress, today: string): boolean => p.due <= today
 /** Weak = failed and not yet recovered: box 1, or box 2 reached after a lapse. A new item answered Good once sits in
  * box 2 with no lapse — young, not weak (decision 2026-10-16). */
 export const isWeak = (p: ItemProgress): boolean => p.box === 1 || (p.box === 2 && p.lapses > 0)
+
+/** A leech keeps failing: Anki's threshold of 8 lapses. Nothing is suspended — Weak spots lists it for the teacher. */
+export const LEECH_LAPSES = 8
+export const isLeech = (p: ItemProgress): boolean => p.lapses >= LEECH_LAPSES
+
+/** How a vocabulary card asks: recognition (Hebrew → pick the meaning) while the word is new or failed (box 1),
+ * typed production (meaning → Hebrew) from box 2 on. A choice can only lift a word to box 2, never further. */
+export type VocabMode = 'choice' | 'typed'
+export const vocabMode = (p: ItemProgress | undefined): VocabMode => (!p || p.box === 1 ? 'choice' : 'typed')
+
+/** Due counts for today (overdue included, index 0) and each following day, over the given items. */
+export function dueForecast(items: SchedItem[], progress: ProgressMap, today: string, days = 14): number[] {
+  const out = Array.from({ length: days }, () => 0)
+  for (const it of items) {
+    const p = progress[it.id]
+    if (!p) continue
+    const d = Math.max(0, daysBetween(today, p.due))
+    if (d < days) out[d] = (out[d] ?? 0) + 1
+  }
+  return out
+}
+
+export const countDue = (items: SchedItem[], progress: ProgressMap, today: string): number => items.filter((c) => progress[c.id] && isDue(progress[c.id]!, today)).length
+
+/** Catch-up: more is due than a day's review budget (after a break). «Today» then takes the oldest first, up to the
+ * budget, and no new items. */
+export const isCatchUp = (dueCount: number, reviewsPerDay: number): boolean => dueCount > reviewsPerDay
 
 /** Round-robin across clusters so consecutive items come from different places. */
 export function interleaveByCluster<T extends { cluster: string }>(items: T[]): T[] {
@@ -99,7 +184,8 @@ export function interleaveByCluster<T extends { cluster: string }>(items: T[]): 
   return out
 }
 
-const byBookOrder = (a: SchedItem, b: SchedItem) => a.unit - b.unit || a.order - b.order
+/** Main book before the workbook (BOOKS rank), then unit, then page order. Inside another book `unit` is null. */
+const byBookOrder = (a: SchedItem, b: SchedItem) => BOOKS[a.book].rank - BOOKS[b.book].rank || (a.unit ?? 0) - (b.unit ?? 0) || a.order - b.order
 
 /** New items still allowed today: the daily limit minus the items first seen today, in any mode. */
 export function newAllowance(progress: ProgressMap, today: string, newPerDay: number): number {
@@ -114,16 +200,24 @@ export interface TodayQueueInput {
   today: string
   /** new items still allowed today — see newAllowance */
   newLimit: number
+  /** the day's review budget; above it «Today» switches to catch-up (see isCatchUp). Absent = no limit. */
+  reviewsPerDay?: number
 }
 
-/** «Today»: due reviews first (lowest box first), then today's new items in book order; both cluster-interleaved. */
+/** «Today»: due reviews first (lowest box first), then today's new items in book order; both cluster-interleaved.
+ * In catch-up the oldest-due items come first, capped at the budget, and no new items are added. */
 export function buildTodayQueue(i: TodayQueueInput): string[] {
-  const due = i.items
-    .filter((c) => {
-      const p = i.progress[c.id]
-      return p !== undefined && isDue(p, i.today)
-    })
-    .sort((a, b) => i.progress[a.id]!.box - i.progress[b.id]!.box || i.progress[a.id]!.due.localeCompare(i.progress[b.id]!.due) || byBookOrder(a, b))
+  const p = (c: SchedItem) => i.progress[c.id]!
+  const dueItems = i.items.filter((c) => {
+    const pr = i.progress[c.id]
+    return pr !== undefined && isDue(pr, i.today)
+  })
+  const budget = i.reviewsPerDay ?? Infinity
+  if (isCatchUp(dueItems.length, budget)) {
+    const oldest = dueItems.sort((a, b) => p(a).due.localeCompare(p(b).due) || p(a).box - p(b).box || byBookOrder(a, b)).slice(0, budget)
+    return interleaveByCluster(oldest).map((c) => c.id)
+  }
+  const due = dueItems.sort((a, b) => p(a).box - p(b).box || p(a).due.localeCompare(p(b).due) || byBookOrder(a, b))
   const fresh = i.items.filter((c) => i.progress[c.id] === undefined).sort(byBookOrder)
   return [...interleaveByCluster(due), ...interleaveByCluster(fresh).slice(0, Math.max(0, i.newLimit))].map((c) => c.id)
 }
@@ -158,7 +252,8 @@ export function buildExtraNewQueue(items: SchedItem[], progress: ProgressMap, n:
 
 export interface ClusterStat {
   cluster: string
-  unit: number
+  book: BookId
+  unit: number | null
   kind: ItemKind
   total: number
   unseen: number
@@ -175,7 +270,7 @@ export function clusterStats(items: SchedItem[], progress: ProgressMap): Cluster
   for (const c of items) {
     let s = map.get(c.cluster)
     if (!s) {
-      s = { cluster: c.cluster, unit: c.unit, kind: c.kind, total: 0, unseen: 0, weak: 0, learning: 0, mastered: 0 }
+      s = { cluster: c.cluster, book: c.book, unit: c.unit, kind: c.kind, total: 0, unseen: 0, weak: 0, learning: 0, mastered: 0 }
       map.set(c.cluster, s)
     }
     s.total++
@@ -185,7 +280,7 @@ export function clusterStats(items: SchedItem[], progress: ProgressMap): Cluster
     else if (p.box < MASTERED_BOX) s.learning++
     else s.mastered++
   }
-  return [...map.values()].sort((a, b) => a.unit - b.unit || a.cluster.localeCompare(b.cluster))
+  return [...map.values()].sort((a, b) => BOOKS[a.book].rank - BOOKS[b.book].rank || (a.unit ?? 0) - (b.unit ?? 0) || a.cluster.localeCompare(b.cluster))
 }
 
 // ---------------------------------------------------------------- in-session requeue

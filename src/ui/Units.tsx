@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { UNIT_LETTERS } from '../content/schema'
+import { BINYAN_LABELS, BOOKS, UNIT_LETTERS } from '../content/schema'
+import { isTopicItem, topicItemIds } from '../engine/items'
 import { isWeak, MASTERED_BOX } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress } from '../store/progress'
@@ -46,6 +47,28 @@ export function Units() {
       }),
     [bundle, items, progress],
   )
+  // workbook topics: the topic's words, grids and exercises count towards its bar
+  const workbook = useMemo(
+    () =>
+      bundle.grammar
+        .filter((g) => g.book === 'workbook')
+        .sort((a, b) => a.section - b.section)
+        .map((g) => {
+          const ids = topicItemIds(g, bundle.vocab)
+          const verbIds = new Set(g.verbIds)
+          const mine = items.filter((i) => isTopicItem(i, ids, verbIds))
+          const stat = { total: mine.length, unseen: 0, weak: 0, learning: 0, mastered: 0 }
+          for (const i of mine) {
+            const p = progress[i.id]
+            if (!p) stat.unseen++
+            else if (isWeak(p)) stat.weak++
+            else if (p.box < MASTERED_BOX) stat.learning++
+            else stat.mastered++
+          }
+          return { ...g, stat, verbs: g.verbIds.length, exercises: g.exerciseIds.length }
+        }),
+    [bundle, items, progress],
+  )
   return (
     <Screen title="Units" back="/">
       <div className="flex flex-col gap-2 pt-2">
@@ -64,6 +87,23 @@ export function Units() {
             </Link>
           )
         })}
+        {workbook.length ? (
+          <section data-testid="units-workbook" className="mt-4 flex flex-col gap-2">
+            <h2 className="px-1 font-bold">{BOOKS.workbook.short} <span className="text-sm font-normal text-ink-muted">· {BOOKS.workbook.title}, your homework pages</span></h2>
+            {workbook.map((t) => (
+              <Link key={t.id} to={`/grammar/${t.id}`} data-testid={`unit-${t.id}`}>
+                <Card className="flex flex-col gap-2 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{t.binyan ? BINYAN_LABELS[t.binyan].en : t.titleEn} <HebrewText size="sm">{t.titleHe}</HebrewText></span>
+                    <span className="shrink-0 text-xs text-ink-muted">pp. {t.pages.join(', ')}</span>
+                  </div>
+                  <p className="text-sm text-ink-muted">{t.verbs} verbs · {t.exercises} exercises</p>
+                  <StatBar s={t.stat} />
+                </Card>
+              </Link>
+            ))}
+          </section>
+        ) : null}
         <p className="text-center text-xs text-ink-muted">Bar: mastered · in progress · weak. Units unlock in book order in «Today»; browse any of them here.</p>
       </div>
     </Screen>

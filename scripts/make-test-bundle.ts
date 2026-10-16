@@ -1,6 +1,6 @@
 // Builds a tiny dummy bundle for the Playwright smoke test into public/data-test/: twelve vocabulary entries,
-// one verb with a future grid (לכתוב, ordinary pa'al — general Hebrew, nothing from the book), one grammar
-// topic, one exercise, one unit and one 1-second audio track synthesised here. The passphrase is public.
+// one verb (לכתוב, ordinary pa'al: future, past, present — general Hebrew, nothing from the book), a grammar
+// topic and a workbook topic, two exercises (one «sort into the table»), one unit and one 1-second audio track synthesised here. The passphrase is public.
 // Deterministic salt and IV so the files are stable in git.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -36,16 +36,24 @@ const bundle: BundleInput = {
       id: 'v-ktb-paal', unit: 1, infinitive: f('לִכְתּוֹב', 'לכתוב'), root: 'כ.ת.ב', binyan: 'paal', group: 'shlemim', paalType: 'efol', ru: 'писать', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [],
       forms: {
         future: { ani: f('אֶכְתּוֹב', 'אכתוב'), ata: f('תִּכְתּוֹב', 'תכתוב'), at: f('תִּכְתְּבִי', 'תכתבי'), anachnu: f('נִכְתּוֹב', 'נכתוב'), atem: f('תִּכְתְּבוּ', 'תכתבו'), hu: f('יִכְתּוֹב', 'יכתוב'), hi: f('תִּכְתּוֹב', 'תכתוב'), hem: f('יִכְתְּבוּ', 'יכתבו') },
+        present: { ms: f('כּוֹתֵב', 'כותב'), fs: f('כּוֹתֶבֶת', 'כותבת'), mp: f('כּוֹתְבִים', 'כותבים'), fp: f('כּוֹתְבוֹת', 'כותבות') },
         past: { ani: f('כָּתַבְתִּי', 'כתבתי'), ata: f('כָּתַבְתָּ', 'כתבת'), at: f('כָּתַבְתְּ', 'כתבת'), anachnu: f('כָּתַבְנוּ', 'כתבנו'), atem: f('כְּתַבְתֶּם', 'כתבתם'), aten: f('כְּתַבְתֶּן', 'כתבתן'), hu: f('כָּתַב', 'כתב'), hi: f('כָּתְבָה', 'כתבה'), hem: f('כָּתְבוּ', 'כתבו') },
       },
       checkedAgainst: [{ page: 8, tense: 'future', cells: ['ani', 'ata', 'at', 'anachnu', 'atem', 'hu', 'hi', 'hem'] }],
     },
   ],
   grammar: [
+    // a workbook topic (general Hebrew, not the workbook's text) with a «sort into the table» exercise
+    { id: 'wb-s1', book: 'workbook', unit: null, section: 1, titleHe: 'פעל — דוגמה', titleEn: "Pa'al — test topic", pages: [1], explanationEn: 'A **test** workbook topic.', tables: [], examples: [], verbIds: ['v-ktb-paal'], exerciseIds: ['wb-ex1.1'], binyan: 'paal', sources: [{ book: 'workbook', page: 1 }], reviewStatus: 'draft', flags: [] },
     { id: 'u01-s1', unit: 1, section: 1, titleHe: 'זמן עתיד — דוגמה', titleEn: 'Future tense — test topic', pages: [8], explanationEn: 'A **test** explanation.\n\n- prefixes: א ת י נ', tables: [], examples: [{ he: 'אני אכתוב מכתב', en: 'I will write a letter' }], verbIds: ['v-ktb-paal'], exerciseIds: ['u01-ex1.1'], tense: 'future', binyan: 'paal', sources: [{ page: 8 }], reviewStatus: 'checked', flags: [] },
   ],
   exercises: [
     { id: 'u01-ex1.1', unit: 1, page: 9, number: '1.1', instructionHe: 'כתוב בעתיד', instructionEn: 'Rewrite in the future', kind: 'transform', gradable: true, sources: [{ page: 9 }], reviewStatus: 'checked', flags: [], items: [{ label: 'א', prompt: 'אני ___ מכתב (לכתוב)', hint: 'לכתוב', tense: 'future', answers: ['אכתוב'], keyPage: 188, flags: [] }, { label: 'ב', prompt: 'הם ___ מכתב (לכתוב)', hint: 'לכתוב', tense: 'future', answers: ['יכתבו'], keyPage: 188, flags: [] }] },
+    { id: 'wb-ex1.1', book: 'workbook', unit: null, page: 1, number: '1.1', instructionHe: 'שבצו את הפעלים בטבלה', instructionEn: 'Place these verbs in the table', kind: 'identify', gradable: true, sources: [{ book: 'workbook', page: 1 }], reviewStatus: 'draft', flags: ['generated'], items: [
+      { label: '1', prompt: 'כתבתי', tense: 'past', target: { verbId: 'v-ktb-paal', tense: 'past', cells: ['ani'] }, answers: ['כתבתי'], flags: [] },
+      { label: '2', prompt: 'תכתוב', tense: 'future', target: { verbId: 'v-ktb-paal', tense: 'future', cells: ['ata', 'hi'] }, answers: ['תכתוב'], flags: [] },
+      { label: '3', prompt: 'כותבים', tense: 'present', target: { verbId: 'v-ktb-paal', tense: 'present', cells: ['mp'] }, answers: ['כותבים'], flags: [] },
+    ] },
   ],
   texts: [{ id: 'u01-t1', unit: 1, titleHe: 'טקסט לדוגמה', pages: [9], paragraphs: ['שלום. זה טקסט לדוגמה.'], audioTrack: 1, sources: [{ page: 9 }], reviewStatus: 'checked', flags: [] }],
   proverbs: [],
@@ -79,6 +87,6 @@ await writeFile(join(dir, 'audio', '01.enc'), encWav)
 await writeFile(join(dir, 'salt.json'), JSON.stringify({ version: 1, salt: SALT_HEX, iterations: ITER }, null, 2) + '\n')
 await writeFile(
   join(dir, 'manifest.json'),
-  JSON.stringify({ version: 1, builtAt: '2026-10-09T00:00:00.000Z', bundle: { file: 'bundle.enc', bytes: enc.length }, audio: [{ track: 1, file: 'audio/01.enc', bytes: encWav.length, type: 'audio/wav' }], counts: { u1: { total: 12, checked: 11 }, verbs: { total: 1, checked: 1 }, exercises: { total: 1, checked: 1 } } }, null, 2) + '\n',
+  JSON.stringify({ version: 1, builtAt: '2026-10-09T00:00:00.000Z', bundle: { file: 'bundle.enc', bytes: enc.length }, audio: [{ track: 1, file: 'audio/01.enc', bytes: encWav.length, type: 'audio/wav' }], counts: { u1: { total: 12, checked: 11 }, verbs: { total: 1, checked: 1 }, exercises: { total: 1, checked: 1 }, workbook: { total: 2, checked: 0 } } }, null, 2) + '\n',
 )
-console.log(`test bundle: ${bundle.vocab.length} vocab, 1 verb, 1 exercise, 1 WAV track → public/data-test/`)
+console.log(`test bundle: ${bundle.vocab.length} vocab, 1 verb, 2 exercises (one in the workbook), 1 WAV track → public/data-test/`)

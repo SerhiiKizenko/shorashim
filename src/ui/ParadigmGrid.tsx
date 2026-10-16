@@ -3,7 +3,7 @@
 // stacked (a phone cannot show eleven columns); the order is the teacher's.
 import { useRef, useState, type ReactNode } from 'react'
 import type { GridColumn, HebrewForm } from '../content/schema'
-import { checkAnswer, type CheckResult } from '../engine/answer'
+import { checkAnswer, ERROR_LABELS, type CheckResult } from '../engine/answer'
 import { Button } from './components'
 import { AnswerInput, HebrewText, Pointed } from './hebrew'
 
@@ -84,7 +84,7 @@ export function ParadigmGrid({ heading, columns, cells, onCell, onFinished }: { 
               </div>
               {res && !res.ok ? (
                 <p data-testid={`grid-feedback-${r.i}`} dir="rtl" className="pr-1 text-right text-sm text-ink-muted">
-                  {res.reason === 'final-letter' ? 'Only a final letter is wrong · ' : res.reason === 'empty' ? 'Empty · ' : ''}
+                  {res.reason === 'empty' ? 'Empty · ' : res.errorClass ? <span data-testid={`grid-class-${r.i}`} data-class={res.errorClass}>{ERROR_LABELS[res.errorClass].label} · </span> : ''}
                   <Pointed>{r.form.pointed}</Pointed> <HebrewText size="sm">({r.form.plain})</HebrewText>
                 </p>
               ) : null}

@@ -1,8 +1,9 @@
 // Niqqud-insensitive search over the transcriptions: matches the regex against every string in
-// sources/transcribed/*.json with vowel points stripped. Prints p.N [field]: text.
+// sources/transcribed/<book>/*.json with vowel points stripped. Prints [book] p.N [field]: text.
 // Usage: pnpm find "להבטיח" [--pass 2] [--max 60]
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { BOOK_IDS, MAIN_BOOK } from '../src/content/schema'
 import { normalizeHebrew } from '../src/engine/answer'
 import { TRANSCRIBED_DIR } from './lib/paths'
 
@@ -27,22 +28,26 @@ function* strings(v: unknown, path: string): Generator<[string, string]> {
 }
 
 let shown = 0
-const files = (await readdir(TRANSCRIBED_DIR).catch(() => [] as string[])).filter((f) => f.endsWith('.json')).sort()
-for (const f of files) {
-  if (pass && !f.includes(`.pass${pass}.`)) continue
-  if (!pass && /\.pass\d\./.test(f)) continue
-  const doc = JSON.parse(await readFile(join(TRANSCRIBED_DIR, f), 'utf8')) as { page: number }
-  for (const [path, s] of strings(doc, '')) {
-    if (path === 'raw') {
-      for (const line of s.split('\n')) if (re.test(normalizeHebrew(line))) print(doc.page, 'raw', line)
-    } else if (re.test(normalizeHebrew(s))) print(doc.page, path, s)
+for (const book of BOOK_IDS) {
+  const dir = join(TRANSCRIBED_DIR, book)
+  const files = (await readdir(dir).catch(() => [] as string[])).filter((f) => f.endsWith('.json')).sort()
+  for (const f of files) {
+    if (pass && !f.includes(`.pass${pass}.`)) continue
+    if (!pass && /\.pass\d\./.test(f)) continue
+    const doc = JSON.parse(await readFile(join(dir, f), 'utf8')) as { page: number }
+    const where = `${book === MAIN_BOOK ? '' : `${book} `}p.${doc.page}`
+    for (const [path, s] of strings(doc, '')) {
+      if (path === 'raw') {
+        for (const line of s.split('\n')) if (re.test(normalizeHebrew(line))) print(where, 'raw', line)
+      } else if (re.test(normalizeHebrew(s))) print(where, path, s)
+    }
   }
 }
-function print(page: number, field: string, text: string) {
+function print(where: string, field: string, text: string) {
   if (shown++ >= max) {
     console.log(`… more than ${max} hits; narrow the pattern or raise --max`)
     process.exit(0)
   }
-  console.log(`p.${page} ${field}: ${text.trim()}`)
+  console.log(`${where} ${field}: ${text.trim()}`)
 }
 if (!shown) console.log('no hits')

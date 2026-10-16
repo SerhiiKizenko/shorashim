@@ -8,17 +8,25 @@ import {
   buildTopicQueue,
   buildWeakQueue,
   clusterStats,
+  countDue,
   currentCard,
   daysBetween,
+  dueForecast,
+  dueHistogram,
+  fuzzWindow,
   gradeInSession,
   interleaveByCluster,
+  isCatchUp,
   isDue,
   isFinished,
+  isLeech,
   isWeak,
   MASTERED_BOX,
   newAllowance,
   shouldPersistGrade,
+  spreadDue,
   startSession,
+  vocabMode,
   type Box,
   type ItemProgress,
   type ProgressMap,
@@ -26,7 +34,7 @@ import {
 } from './scheduler'
 
 const T = '2026-10-09'
-const item = (id: string, unit: number, cluster: string, order: number, kind: SchedItem['kind'] = 'vocab'): SchedItem => ({ id, kind, unit, cluster, order })
+const item = (id: string, unit: number | null, cluster: string, order: number, kind: SchedItem['kind'] = 'vocab', book: SchedItem['book'] = 'sheat-bet'): SchedItem => ({ id, kind, book, unit, cluster, order })
 const prog = (box: Box, due: string, extra: Partial<ItemProgress> = {}): ItemProgress => ({ box, due, introduced: T, lastReviewed: T, lastGrade: 'good', reps: 1, lapses: 0, ...extra })
 
 describe('dates', () => {
@@ -128,6 +136,16 @@ describe('topic / weak / extra queues', () => {
     expect(buildExtraNewQueue(items, progress, 3)).toEqual(['b1', 'm1', 't1'])
     expect(buildExtraNewQueue(items, progress, 10)).toHaveLength(5)
   })
+  it('new items follow book order: main-book units first, then the workbook (unit null)', () => {
+    const items = [item('wb', null, 'x', 0, 'exercise', 'workbook'), item('u4', 4, 'x', 0), item('u1', 1, 'x', 5)]
+    expect(buildTodayQueue({ items, progress: {}, today: T, newLimit: 10 })).toEqual(['u1', 'u4', 'wb'])
+  })
+  it('clusterStats sorts main-book units before the workbook and keeps the book on each row', () => {
+    const items = [item('wb', null, 'workbook:ex', 0, 'exercise', 'workbook'), item('u4', 4, 'u4:ex', 0, 'exercise'), item('u1', 1, 'u1:verb', 0)]
+    const s = clusterStats(items, {})
+    expect(s.map((c) => c.cluster)).toEqual(['u1:verb', 'u4:ex', 'workbook:ex'])
+    expect(s[2]).toMatchObject({ book: 'workbook', unit: null, unseen: 1 })
+  })
   it('clusterStats counts unseen / weak / learning / mastered', () => {
     const s = clusterStats(items, progress).find((x) => x.cluster === 'u1:verb')!
     expect(s).toMatchObject({ unit: 1, kind: 'vocab', total: 2, unseen: 0, weak: 1, learning: 1, mastered: 0 })
@@ -175,5 +193,62 @@ describe('in-session requeue', () => {
     s = gradeInSession(s, 'good', () => 0)
     expect(isFinished(s)).toBe(true)
     expect(s.done).toBe(2)
+  })
+})
+
+describe('fuzz and load balancing (Anki bands, reimplemented)', () => {
+  it('gives no fuzz under 2.5 days and Anki-sized windows above', () => {
+    expect([0, 1, 2].map(fuzzWindow)).toEqual([[0, 0], [1, 1], [2, 2]])
+    expect([3, 7, 14, 30, 60].map(fuzzWindow)).toEqual([[2, 4], [5, 9], [12, 16], [27, 33], [55, 65]])
+  })
+  it('without load, the random source picks inside the window', () => {
+    const none = {}
+    expect(spreadDue(T, 7, { rand: () => 0, load: none })).toBe(addDays(T, 5))
+    expect(spreadDue(T, 7, { rand: () => 0.999, load: none })).toBe(addDays(T, 9))
+    expect(spreadDue(T, 1, { rand: () => 0.999, load: none })).toBe(addDays(T, 1))
+  })
+  it('with load, it takes the lightest day in the window; ties go to the random source', () => {
+    const load = { [addDays(T, 5)]: 4, [addDays(T, 6)]: 1, [addDays(T, 7)]: 9, [addDays(T, 8)]: 1, [addDays(T, 9)]: 3 }
+    expect(spreadDue(T, 7, { rand: () => 0, load })).toBe(addDays(T, 6))
+    expect(spreadDue(T, 7, { rand: () => 0.999, load })).toBe(addDays(T, 8))
+  })
+  it('applyGrade spreads only when asked; again and the short boxes stay exact', () => {
+    const spread = { rand: () => 0, load: {} }
+    expect(applyGrade(prog(3, T), 'good', T).due).toBe(addDays(T, 7))
+    expect(applyGrade(prog(3, T), 'good', T, spread).due).toBe(addDays(T, 5))
+    expect(applyGrade(prog(4, T), 'again', T, spread).due).toBe(T)
+    expect(applyGrade(undefined, 'good', T, spread).due).toBe(addDays(T, 1))
+    expect(applyGrade(prog(1, T), 'hard', T, spread).due).toBe(addDays(T, 1))
+  })
+  it('dueHistogram counts items per due day', () => {
+    expect(dueHistogram({ a: prog(2, T), b: prog(3, T), c: prog(3, '2026-10-12') })).toEqual({ [T]: 2, '2026-10-12': 1 })
+  })
+})
+
+describe('forecast, catch-up, leeches, card mode', () => {
+  const items = [item('a', 1, 'u1:noun', 1), item('b', 1, 'u1:noun', 2), item('c', 1, 'u1:verb', 3), item('d', 1, 'u1:verb', 4), item('e', 1, 'u1:noun', 5)]
+  it('dueForecast folds overdue into today and counts the next days', () => {
+    const progress: ProgressMap = { a: prog(2, '2026-10-01'), b: prog(2, T), c: prog(3, addDays(T, 2)), d: prog(3, addDays(T, 20)) }
+    expect(dueForecast(items, progress, T, 4)).toEqual([2, 0, 1, 0])
+    expect(countDue(items, progress, T)).toBe(2)
+  })
+  it('catch-up: above the budget, oldest first, capped, no new items', () => {
+    const progress: ProgressMap = { a: prog(2, '2026-10-05'), b: prog(5, '2026-10-01'), c: prog(1, '2026-10-08'), d: prog(3, '2026-10-02') }
+    expect(isCatchUp(4, 3)).toBe(true)
+    expect(isCatchUp(3, 3)).toBe(false)
+    // b (Oct 1) and d (Oct 2) are the oldest; interleaved across clusters
+    expect(buildTodayQueue({ items, progress, today: T, newLimit: 10, reviewsPerDay: 2 })).toEqual(['b', 'd'])
+    // under the budget: the usual order (lowest box first) and new items after the reviews
+    expect(buildTodayQueue({ items, progress, today: T, newLimit: 10, reviewsPerDay: 4 })).toEqual(['c', 'a', 'd', 'b', 'e'])
+  })
+  it('a leech has failed 8 times or more', () => {
+    expect(isLeech(prog(1, T, { lapses: 7 }))).toBe(false)
+    expect(isLeech(prog(3, T, { lapses: 8 }))).toBe(true)
+  })
+  it('a vocabulary card is a choice while new or in box 1, typed from box 2', () => {
+    expect(vocabMode(undefined)).toBe('choice')
+    expect(vocabMode(prog(1, T, { lapses: 2 }))).toBe('choice')
+    expect(vocabMode(prog(2, T))).toBe('typed')
+    expect(vocabMode(prog(7, T))).toBe('typed')
   })
 })

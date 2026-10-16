@@ -3,8 +3,9 @@
 // pointed Hebrew is legible for transcription. Run: pnpm render --pages 54-55,8 [--columns 8]
 import { mkdir, rename, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { MAIN_BOOK } from '../src/content/schema'
 import { BOOK_PDF, PAGES_DIR, pageFile, parsePages } from './lib/paths'
-import { run } from './lib/run'
+import { pdfPages, run } from './lib/run'
 
 const argv = process.argv.slice(2)
 const opt = (name: string) => {
@@ -27,16 +28,17 @@ const COLUMN_X: [number, number][] = [
   [0.0, 0.32],
 ]
 
-await mkdir(PAGES_DIR, { recursive: true })
+const bookDir = join(PAGES_DIR, MAIN_BOOK)
+await mkdir(bookDir, { recursive: true })
+// pdftoppm pads the page number in its output name to the width of the document's page count
+const pad = String(await pdfPages(BOOK_PDF)).length
 for (const p of pages) {
-  const out = pageFile(p)
+  const out = pageFile(MAIN_BOOK, p)
   const exists = await stat(out).then(() => true, () => false)
   if (!exists || force) {
-    const prefix = join(PAGES_DIR, `tmp-${p}`)
+    const prefix = join(bookDir, `tmp-${p}`)
     await run('pdftoppm', ['-r', '300', '-f', String(p), '-l', String(p), '-png', BOOK_PDF, prefix])
-    // pdftoppm pads the page number to the width of the document's page count
-    const produced = `${prefix}-${String(p).padStart(3, '0')}.png`
-    await rename(produced, out).catch(() => rename(`${prefix}-${p}.png`, out))
+    await rename(`${prefix}-${String(p).padStart(pad, '0')}.png`, out)
     console.log(`rendered p.${p}`)
   }
   if (columns.has(p)) {
@@ -44,7 +46,7 @@ for (const p of pages) {
     const [w, h] = [geom[0]!, geom[1]!]
     for (const [i, [x0, x1]] of COLUMN_X.entries()) {
       const crop = `${Math.round((x1 - x0) * w)}x${h}+${Math.round(x0 * w)}+0`
-      await run('magick', [out, '-crop', crop, '+repage', '-resize', '200%', '-unsharp', '0x1', pageFile(p, `-c${i + 1}`)])
+      await run('magick', [out, '-crop', crop, '+repage', '-resize', '200%', '-unsharp', '0x1', pageFile(MAIN_BOOK, p, `-c${i + 1}`)])
     }
     console.log(`cropped p.${p} into 3 columns (2×)`)
   }

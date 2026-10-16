@@ -13,7 +13,7 @@ const mem = new Map<string, string>()
   },
 } as Storage
 
-const { useProgress, DEFAULT_SETTINGS, BackupSchema, makeBackup } = await import('./progress')
+const { useProgress, DEFAULT_SETTINGS, BackupSchema, makeBackup, mergePersisted } = await import('./progress')
 const T = '2026-10-09'
 
 describe('progress store', () => {
@@ -55,5 +55,50 @@ describe('progress store', () => {
     expect(b.app).toBe('shorashim')
     expect(b.progress['vocab:u01-v001']!.box).toBe(1)
     expect(b.settings.tenseFocus).toEqual(['future'])
+  })
+})
+
+describe('review log and backward compatibility', () => {
+  beforeEach(() => {
+    useProgress.getState().resetProgress()
+    useProgress.getState().setSettings(DEFAULT_SETTINGS)
+  })
+
+  it('logs every persisted grade, with the mistake class when there is one', () => {
+    useProgress.getState().grade('vocab:u01-v001', 'good', T)
+    useProgress.getState().grade('vocab:u01-v002', 'again', T, 'vowel-letter')
+    expect(useProgress.getState().reviews).toEqual([
+      ['vocab:u01-v001', T, 'good'],
+      ['vocab:u01-v002', T, 'again', 'vowel-letter'],
+    ])
+    useProgress.getState().resetProgress()
+    expect(useProgress.getState().reviews).toEqual([])
+  })
+
+  it('a backup written before the log and the new settings existed still restores, with defaults', () => {
+    const old = {
+      app: 'shorashim',
+      version: 1,
+      exportedAt: '2026-10-10T08:00:00.000Z',
+      progress: { 'vocab:u01-v001': { box: 2, due: '2026-10-11', introduced: '2026-10-10', lastReviewed: '2026-10-10', lastGrade: 'good', reps: 1, lapses: 0 } },
+      settings: { tenseFocus: ['future'], newPerDay: 10, theme: 'auto', onboarded: true },
+      stats: { streak: 1, lastStudyDate: '2026-10-10', totalReviews: 1 },
+    }
+    const b = BackupSchema.parse(old)
+    expect(b.reviews).toEqual([])
+    expect(b.cellStats).toEqual({})
+    expect(b.settings).toMatchObject({ reviewsPerDay: 100, mixedCells: 10 })
+    expect(b.settings.anchor).toBeUndefined()
+    useProgress.getState().importBackup(b)
+    expect(useProgress.getState().settings.reviewsPerDay).toBe(100)
+    expect(BackupSchema.parse(JSON.parse(JSON.stringify(makeBackup(useProgress.getState())))).reviews).toEqual([])
+  })
+
+  it('a stored state from before the new settings gets them filled in on load (persist merge)', () => {
+    const stored = { settings: { tenseFocus: ['past'], newPerDay: 3, theme: 'dark', onboarded: true } }
+    const merged = mergePersisted(stored, useProgress.getState())
+    expect(merged.settings).toMatchObject({ tenseFocus: ['past'], newPerDay: 3, theme: 'dark', reviewsPerDay: 100, mixedCells: 10 })
+    expect(merged.reviews).toEqual([])
+    expect(typeof merged.grade).toBe('function')
   })
 })

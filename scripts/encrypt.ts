@@ -81,7 +81,7 @@ async function main() {
   if (audio.length) console.log(`audio: ${audio.length} track(s), ${fmtBytes(audio.reduce((n, a) => n + a.bytes, 0))}`)
 
   const counts: Record<string, { total: number; checked: number }> = {}
-  for (const [unit, s] of Object.entries(result.stats)) counts[`u${unit}`] = { total: s.vocab.total, checked: s.vocab.checked }
+  for (const [key, s] of Object.entries(result.stats)) counts[key] = { total: s.vocab.total, checked: s.vocab.checked }
   counts.verbs = { total: bundle.verbs.length, checked: bundle.verbs.filter((v) => v.reviewStatus === 'checked').length }
   counts.exercises = { total: bundle.exercises.length, checked: bundle.exercises.filter((e) => e.reviewStatus === 'checked').length }
   const manifest = { version: 1, builtAt: new Date().toISOString(), bundle: { file: 'bundle.enc', bytes: enc.length }, audio: audio.sort((a, b) => a.track - b.track), counts }

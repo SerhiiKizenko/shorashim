@@ -125,3 +125,84 @@ reinsert index is clamped to the queue end); a session does not survive a tab di
 `totalReviews` counts re-passes; the share path on the real phone and the exact Chrome/Gboard menu labels are G2.
 
 **Next**: Serhii's go-ahead to push (deploys), then the live drive at `?data=data-test`, then G2 on the phone.
+
+## 2026-10-16 — session 4 (learning-technique research → scheduler, vocab card, verbs, habit)
+
+**Research**: three web tracks (SRS science, Hebrew-specific techniques, repos + motivation), evidence-graded, with
+URLs, in `~/.claude/plans/ground-your-self-on-shiny-mitten.md`. Serhii chose A1 A2 A3 A4 A6 · B1 B2 B3 B5 B7 · C1
+C3 · E1 E2 E4; Leitner stays (FSRS deferred).
+
+**Done**
+- Scheduler: Anki's fuzz bands + load balancing (`fuzzWindow`, `spreadDue`; the store passes a spread, tests stay
+  exact without one), forecast (`dueForecast` → bars on Home and the finish screen), catch-up above
+  `reviewsPerDay` (default 100: oldest first, capped, no new items, no mixed cells), leeches (≥ 8 lapses →
+  «Ask the teacher» on Weak spots), review log `reviews: [id, day, grade, errorClass?]` (persisted grades only).
+- Vocabulary card: box 1 / new → 4-choice Hebrew → meaning (`choiceOptions`: same unit + part of speech first);
+  box ≥ 2 → typed; decided from a progress snapshot taken at session start, so a re-pass keeps the first
+  direction. Hint ladder (root or first letter → half the word → show; a hinted answer allows only Hard). Mistake
+  classes (`classifyError`: final-letter, vowel-letter, letter, prefix, ending, other) with a letter diff
+  (`alignHebrew`), logged and counted on Weak spots. From box 4 the answer is shown unpointed, tap for points;
+  «Which form?» has a vowel-points toggle. Speak uses the pointed form.
+- Verbs: «From root» (root · binyan · tense → type the form), mixed cells after Today (`buildMixedCells`: grids in
+  box ≥ 2, not due, not reviewed today; one cell per verb per round, failed cells first; cell stats only).
+- Habit: seven dots for the last 7 days instead of the streak line (`studyDays`, from the log and `lastReviewed`),
+  «N answered today», a session bar pre-filled with today's answers, the anchor («After X → Today») asked in
+  Onboarding and editable in Settings.
+
+**Tests**: vitest 84 (fuzz windows, spread, forecast, catch-up, leech, card mode, error classes, alignment,
+choice options, mixed cells, study days, review log, v1-backup restore with defaults, persist merge). Playwright 9
+per project, both green: two scenarios updated (a new word is now a choice), four new (catch-up + fuzz window +
+leech, typed card with hints and a logged vowel-letter slip, mixed cells + from root, anchor + week dots + session
+bar). Chrome drive at 390 px with a seeded dummy state: every new screen checked, the balancer chose the empty day
+in a live window, no console errors. Fixed from the drive: the hint's English label sat inside the RTL span; the
+diff inherited the muted colour; Hebrew examples inside English hints were reordered (`MixedText`); «6 of the last 7
+days» wrapped; «Which form?» wrapped.
+
+**Findings (not fixed)**: mixed-cell mistakes go to cell stats only, so «Kinds of mistake» counts vocabulary
+answers alone; a line can break between a maqaf and its letters in the ending hint.
+
+**Next**: Serhii's check questions, then his go-ahead to commit (the workbook change is still uncommitted in the
+same files) and to push (deploys). G2 on the Pixel now also covers: the Hebrew voice reading the pointed form, the
+4-choice and hint buttons by touch, Gboard in the from-root card.
+
+## 2026-10-16 — session 5 (homework intake: the teacher's verb workbook, pp.40–41, 49–50, 60–62)
+
+**Scope (Serhii)**: expand the content with the homework PDFs (three CamScanner scans). Continues the plan of an
+earlier session (`~/.claude/plans/ground-yourself-on-this-mighty-feigenbaum.md`), whose decisions stand: source id
+`workbook`, answers generated from the printed tables and flagged until the teacher confirms, own section in the app.
+
+**Done**
+- `pnpm intake` (md5-idempotent copy into `MATERIALS_DIR/teacher/intake/`, renders, `--assign`, `--status`) and
+  `pnpm check-pass`. The 07.10 scan is Шэат иврит pp.54–55 (already transcribed, recognised); the other two are
+  workbook pp.40, 49 and 60, 61, 62, 50, 41.
+- Two independent passes per page by fresh subagents (both passes this time, briefed from CONTENT-RULES §workbook);
+  `diff-pass` now matches arrays by identity (verbs by root + binyan, exercises by number, items by label) and skips
+  English free text. Agreement: p.60 and p.62 identical, p.61 one space, p.50 one dot, p.40 one cut-off example answer
+  (dropped, derived instead), p.41 four dots + two hint styles, p.49 the shva under פ (absent in all 19 past / future
+  / imperative cells while the present prints it → recorded as printed). Both readers found that 49.1 asks for
+  שם הפועל, not the שם הפעולה the brief said.
+- `scripts/lib/paradigm.ts`: plain paradigms for pi'el (shlemim, gutturals, consonantal-yod), hif'il, hitpa'el
+  (metathesis ס/ש/צ/ז; not ד/ט/ת), final letters, ת/נ assimilation, a short list of usual verbal nouns (תשלום, קבלה,
+  נגינה, בקשה, פיטורים, המשך, הסבר, שימוש). Importer: verbs merged across pages and books (printed first, printed vs
+  printed → conflict), generated cells flagged, workbook answers derived from `verb` + `tense` + `cells` / `ask`,
+  a «ל___» blank expects the infinitive without the printed ל, one word card per new verb (Russian from
+  `sources/transcribed/workbook/glosses.json`, flagged `unsupported`), the G3 self-check: **118 printed cells
+  compared, 0 mismatches**.
+- App: Units → Workbook section (topic cards with a progress bar), topic page «Study this topic» (`/study/topic?topic=`),
+  an exercise opened on its own shows every item regardless of the tense focus, the «sort into the table» drill
+  (tense chips, then person; no tense badge — naming it is the task), verbal noun on the topic's verb cards. Dummy
+  bundle: לכתוב present, workbook topic `wb-s1` with a three-item sort exercise.
+- Content: 96 vocab (57 new workbook verbs), 71 verbs (55 new), 4 topics (3 workbook), 12 exercises (10 workbook,
+  318 items), 2 sayings. Bundle 291 KB (was 40 KB); audio untouched (`--tracks none`). The 16 p.54 verbs gained
+  generated past / present / imperative (their future is unchanged, cell for cell).
+
+**Tests**: vitest 92 (paradigm generator on general verbs), Playwright 10 per project, both green (new: the workbook
+section, a sort exercise wrong then right, «Study this topic»). Chrome drive with the dummy bundle at 390 px; found
+and fixed: the sort card's tense badge gave the answer away; the person buttons now run right to left.
+
+**Findings (not fixed)**: the p.8 gloss of להפסיק reads «пракращать» (book typo or transcription — check the page);
+new workbook items come after the main book's in «Today» (rank), so homework is reached from Units → Workbook;
+mixed-cell and sort answers go to cell stats only.
+
+**Next**: Serhii's go-ahead to commit and push (deploys); at class, the teacher's corrections → `content/verified/`
+→ `checked`, `generated` cleared per confirmed cell.

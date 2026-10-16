@@ -58,3 +58,55 @@ merges them (verb `forms` merge per cell) and validates. `pnpm validate` must be
 - Never commit `content/`, `sources/`, `.env.local`, MP3s, the kickoff. Before each commit:
   `git diff --cached --name-only | grep -E '^content/|^sources/|\.env|\.mp3'` must print nothing
   (`src/content/` is code and is committed).
+
+## The teacher's verb workbook (`book: "workbook"`)
+
+Homework arrives as CamScanner PDFs of pages from the teacher's verb workbook (title unknown). `pnpm intake <pdf…>`
+copies each PDF into `MATERIALS_DIR/teacher/intake/` (idempotent by md5) and renders it to `sources/intake/<md5:8>/`;
+`pnpm intake --assign <md5:8> 1=workbook:40 …` places the renders as `sources/pages/workbook/pNNN.png` (a page of the
+main book is re-rendered from the book PDF instead). `pnpm intake --status` shows how far each page has got.
+
+Page records: `book: "workbook"`, `unit: null`, `page` = the printed page number. Transcription files go to
+`sources/transcribed/workbook/pNNN.pass{1,2}.json`; `pnpm check-pass <file>` validates one before the diff;
+`pnpm diff-pass workbook NNN [--accept 1]` resolves.
+
+- **Topics.** A page titled «בניין … » with a paradigm table is a topic: one `grammar` entry, `section` = the page
+  number, `titleHe` as printed, `explanationEn` a faithful English rendering of what the page states (the root /
+  infinitive / verbal-noun line, «שימו לב» rules), `tables` = the paradigm table (and any other printed table) with
+  `columns` and each row's cells in the printed right-to-left order, `""` for an empty cell, points as printed;
+  `binyan` set, `tense` omitted; `verbs` = the plain infinitives of the verbs whose forms the tables print.
+- **Verbs.** One `verbs[]` entry for every verb on the page: the table's verbs and every verb an exercise asks for
+  or shows. `infinitive.pointed` as printed (an unpointed print stays unpointed); if the page prints no infinitive,
+  the standard one, unpointed, flag `generated`, note «infinitive derived from the root». `root` as printed with
+  dots, or derived and noted. `group` as in the main book (`shlemim`; a consonantal י as 2nd radical in pi'el →
+  `ayin-yod`; 2nd radical א ה ח ע ר → `gutturals`; four radicals → `quad`). `forms` = only the cells the page prints
+  in a table position: the paradigm table, and the seeded cell of a complete-the-table row. Cell keys: past
+  `ani ata at hu hi anachnu atem aten hem`; present `ms fs mp fp`; future `ani ata at hu hi anachnu atem hem`
+  (אתם/אתן is one row → `atem`; הם/הן → `hem`); imperative `ata at atem` (drop the «!»). A slash cell
+  («דִּבַּרְתֶּם/תֶּן») gives both `atem` and `aten`. `verbalNoun` when printed in a known place (the «שם הפעולה:» line or
+  the שם הפעולה column of a row). Do not add Russian glosses: they are added after the two passes in
+  `sources/transcribed/workbook/glosses.json` (`{ "<plain infinitive>": "<Russian>" }`, general usage), and every word
+  card made from them is flagged `unsupported` (the workbook prints none).
+- **A table that mixes verbs** (p.60: past of צ.ל.ם, present of ש.מ.ש, future of ס.כ.ל) is split by verb: every
+  printed cell goes to the verb it belongs to, with a note.
+- **Exercise numbers** (the workbook prints none): `<topic page>.<n>`, n counting the exercises in printed order from
+  the topic page on (p.40 → 40.1; p.41 → 40.2, 40.3; p.50 → 49.2, 49.3; p.61 → 60.1, 60.2; p.62 → 60.3, 60.4). The
+  page that prints the exercise stays its `page`.
+- **Items**, one per answer blank and per tense column. Labels: a sentence with tense columns → `«n» · עבר`
+  (the column header as printed: עבר / הווה / עתיד / שם הפועל / שם הפעולה); several blanks → `«n».«k»` (k in reading
+  order), plus ` · «column»` when columns apply; a complete-the-table cell → `«pronoun as printed» · «column»`
+  for every empty cell of the row; a sort-into-the-table form → `«n»`, its position in the printed list; an
+  unnumbered example → `דוגמה`. `prompt`: the sentence exactly as printed, each blank `___`, the parenthesised cue
+  left in place; a table cell → `«pronoun» ___`; a list form (sort, or «write the infinitive and the verbal noun»)
+  → the form as printed. `hint`: the printed cue for this blank (the infinitive or root in parentheses without the
+  parentheses, the bold verb, or the row's printed form). `tense` for tense blanks. `verb`: the plain infinitive the
+  blank is about — always, also for a sort item. `cells`: the person cell(s) the subject needs (past/future keys
+  above; present `ms fs mp fp`; a subject of unknown gender such as אני or אנחנו → both, e.g. `["ms","fs"]`); for a
+  sort item, every person the form fits (future תְּדַבֵּר → `["ata","hi"]`). `ask: "infinitive"` / `"verbalNoun"` for
+  a שם הפועל / שם הפעולה blank (no tense, no cells). `answers` only when the page itself prints the answer (a worked
+  example, also in a handwriting font) — exactly as printed. The learner's own handwriting is not content: ignore
+  it and say so in `notes`.
+- **Kinds**: sentence → `conjugate-in-context`; complete-the-table → `fill`; sort-into-the-table → `identify`; a list of
+  forms → `transform`. All are `gradable: true`: the importer derives every answer from the verb's paradigm (printed
+  cells first, generated cells flagged `generated`), so a wrong `verb`, `tense` or `cells` makes a wrong answer.
+- **Sayings** in a box (e.g. «כל ההתחלות קשות») → `proverbs[]`, points as printed.

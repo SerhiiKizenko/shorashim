@@ -19,6 +19,8 @@
     "validate": "tsx scripts/validate.ts",
     "encrypt": "tsx scripts/encrypt.ts",
     "find": "tsx scripts/find.ts",
+    "intake": "tsx scripts/intake.ts",
+    "check-pass": "tsx scripts/check-pass.ts",
     "apply-verified": "tsx scripts/apply-verified.ts",
     "test-bundle": "tsx scripts/make-test-bundle.ts"
   },

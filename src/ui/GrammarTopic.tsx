@@ -1,3 +1,4 @@
+import { pageLabel } from '../content/schema'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { BINYAN_LABELS, TENSE_LABELS } from '../content/schema'
@@ -17,7 +18,7 @@ export function GrammarTopicScreen() {
   const exercises = topic.exerciseIds.map((e) => exerciseById[e]).filter((e): e is NonNullable<typeof e> => !!e)
 
   return (
-    <Screen title={topic.titleEn} back={`/units/${topic.unit}`}>
+    <Screen title={topic.titleEn} back={topic.unit ? `/units/${topic.unit}` : '/units'}>
       <div className="flex flex-col gap-4 pt-2 pb-6">
         <div className="flex flex-wrap items-center gap-2">
           <HebrewText size="lg" className="font-bold" block>{topic.titleHe}</HebrewText>
@@ -25,7 +26,7 @@ export function GrammarTopicScreen() {
         <div className="flex flex-wrap items-center gap-2">
           {topic.binyan ? <Badge tone="lavender">{BINYAN_LABELS[topic.binyan].en}</Badge> : null}
           {topic.tense ? <Badge tone="mist">{TENSE_LABELS[topic.tense].en}</Badge> : null}
-          <Pages pages={topic.pages} />
+          <Pages book={topic.book} pages={topic.pages} />
         </div>
         <DraftNote status={topic.reviewStatus} flags={topic.flags} />
 
@@ -35,7 +36,7 @@ export function GrammarTopicScreen() {
         {topic.explanationRu ? (
           <Card className="flex flex-col gap-2 bg-surface-2">
             <button type="button" className="text-left text-sm font-semibold" onClick={() => setShowRu(!showRu)}>
-              {showRu ? '▾' : '▸'} The book's own words (Russian, p. {topic.pages[0]})
+              {showRu ? '▾' : '▸'} The book's own words (Russian, {pageLabel(topic.book, topic.pages[0])})
             </button>
             {showRu ? <p className="whitespace-pre-line text-sm">{topic.explanationRu}</p> : null}
           </Card>
@@ -83,7 +84,10 @@ export function GrammarTopicScreen() {
                 <Link key={v.id} to={topic.tense ? `/study/grid?verb=${v.id}&tense=${topic.tense}` : '/verbs'} data-testid={`topic-verb-${v.id}`}>
                   <Card className="flex items-center justify-between gap-2 py-3">
                     <span className="text-xs text-ink-muted">{v.ru ?? ''}</span>
-                    <HebrewText size="md" className="font-semibold">{v.infinitive.pointed}</HebrewText>
+                    <span className="flex flex-col items-end">
+                      <HebrewText size="md" className="font-semibold">{v.infinitive.pointed}</HebrewText>
+                      {v.verbalNoun ? <HebrewText size="sm" className="text-ink-muted">{v.verbalNoun.pointed}</HebrewText> : null}
+                    </span>
                   </Card>
                 </Link>
               ))}
@@ -92,14 +96,20 @@ export function GrammarTopicScreen() {
           </section>
         ) : null}
 
+        {topic.book === 'workbook' ? (
+          <Link to={`/study/topic?topic=${topic.id}`} data-testid="topic-study" className="block">
+            <Button className="w-full">Study this topic — words, tables, exercises</Button>
+          </Link>
+        ) : null}
+
         {exercises.length ? (
           <section className="flex flex-col gap-2">
             <h2 className="px-1 font-bold">Exercises</h2>
             {exercises.map((e) => (
-              <Link key={e.id} to={`/study/exercise?id=${e.id}`}>
+              <Link key={e.id} to={`/study/exercise?id=${e.id}`} data-testid={`topic-exercise-${e.id}`}>
                 <Card className="flex items-center justify-between gap-3 py-3">
                   <span className="font-semibold">{e.number} · {e.instructionEn}</span>
-                  <span className="text-xs text-ink-muted">p. {e.page}</span>
+                  <span className="shrink-0 text-xs text-ink-muted">{pageLabel(e.book, e.page)} · {e.items.length}</span>
                 </Card>
               </Link>
             ))}

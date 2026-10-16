@@ -30,12 +30,12 @@ export async function saveContentFile(name: ContentFile, records: unknown[]): Pr
 
 /** Which collection an id belongs to, by its shape. */
 export function collectionOf(id: string): Collection | null {
-  if (/^u\d{2}-v\d{3}$/.test(id)) return 'vocab'
+  if (/^(u\d{2}-v\d{3}|wb-v-)/.test(id)) return 'vocab'
   if (/^v-/.test(id)) return 'verbs'
-  if (/^u\d{2}-s\d+$/.test(id)) return 'grammar'
-  if (/^u\d{2}-ex/.test(id)) return 'exercises'
-  if (/^u\d{2}-t\d+$/.test(id)) return 'texts'
-  if (/^u\d{2}-p\d+$/.test(id)) return 'proverbs'
+  if (/^(u\d{2}|wb)-s\d+$/.test(id)) return 'grammar'
+  if (/^(u\d{2}|wb)-ex/.test(id)) return 'exercises'
+  if (/^(u\d{2}|wb)-t\d+$/.test(id)) return 'texts'
+  if (/^(u\d{2}|wb)-p\d+$/.test(id)) return 'proverbs'
   if (/^prep-/.test(id)) return 'prepositions'
   return null
 }

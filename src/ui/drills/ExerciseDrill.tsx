@@ -1,10 +1,56 @@
+import { pageLabel } from '../../content/schema'
 import { useState } from 'react'
-import { TENSE_LABELS, type Exercise, type ExerciseItem, type Tense } from '../../content/schema'
+import { GRID_COLUMNS, TENSE_LABELS, TENSES, type Exercise, type ExerciseItem, type Tense } from '../../content/schema'
 import { checkAgainstAnswers, type CheckResult } from '../../engine/answer'
 import type { Grade } from '../../engine/scheduler'
 import { useProgress } from '../../store/progress'
 import { Badge, Button, Card, DraftNote, GradeBar, Pages } from '../components'
 import { AnswerInput, HebrewText, Pointed } from '../hebrew'
+
+/** «שבצו את הפעלים בטבלה»: the form is shown, the learner places it — first the tense, then the person. Right when
+ * the tense is the item's and the chosen column's cell is one of the item's cells (future אתם and אתן share one). */
+function IdentifyItem({ item, onAnswer }: { item: ExerciseItem; onAnswer: (ok: boolean) => void }) {
+  const target = item.target
+  const [tense, setTense] = useState<Tense | null>(null)
+  const [picked, setPicked] = useState<{ tense: Tense; cell: string; label: string } | null>(null)
+  const ok = !!picked && !!target && picked.tense === target.tense && (target.cells ?? []).includes(picked.cell)
+  const right = target?.tense ? GRID_COLUMNS[target.tense].filter((c) => target.cells?.includes(c.cell)).map((c) => c.label) : []
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {TENSES.map((t) => (
+          <button key={t} type="button" data-testid={`identify-tense-${t}`} disabled={!!picked} aria-pressed={tense === t} onClick={() => setTense(t)} className={`min-h-11 rounded-full px-4 text-sm font-semibold ${tense === t ? 'bg-sage-strong text-on-accent' : 'bg-surface-2'}`}>
+            {TENSE_LABELS[t].en} <HebrewText size="sm">{TENSE_LABELS[t].he}</HebrewText>
+          </button>
+        ))}
+      </div>
+      {tense ? (
+        <div dir="rtl" className="grid grid-cols-3 gap-2">
+          {GRID_COLUMNS[tense].map((c, i) => {
+            const chosen = picked?.label === c.label && picked.tense === tense
+            const tone = !picked ? 'bg-surface-2' : target?.tense === tense && target.cells?.includes(c.cell) ? 'bg-ok/40' : chosen ? 'bg-bad/40' : 'bg-surface-2 opacity-60'
+            return (
+              <button key={i} type="button" data-testid={`identify-person-${i}`} data-cell={c.cell} disabled={!!picked} onClick={() => {
+                setPicked({ tense, cell: c.cell, label: c.label })
+                onAnswer(!!target && tense === target.tense && (target.cells ?? []).includes(c.cell))
+              }} className={`min-h-12 rounded-2xl px-2 ${tone}`}>
+                <HebrewText size="sm" className="font-semibold">{c.label}</HebrewText>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-ink-muted">Which tense is it?</p>
+      )}
+      {picked ? (
+        <Card data-testid="study-answer" className={ok ? 'bg-ok/15' : 'bg-bad/10'}>
+          <p className="text-sm font-semibold">{ok ? 'Correct' : 'Not this cell'}</p>
+          {target?.tense ? <p className="text-sm">{TENSE_LABELS[target.tense].en} · <HebrewText size="sm">{right.join(' / ')}</HebrewText></p> : null}
+        </Card>
+      ) : null}
+    </div>
+  )
+}
 
 /** Book exercise, item by item. Items tagged with a tense outside the focus are skipped (unless that leaves nothing). */
 export function ExerciseDrill({ exercise, focus, today, onDone }: { exercise: Exercise; focus: Tense[]; today: string; onDone: (g: Grade) => void }) {
@@ -20,6 +66,8 @@ export function ExerciseDrill({ exercise, focus, today, onDone }: { exercise: Ex
   const [wrong, setWrong] = useState<string[]>([])
   const item = items[index]
   const finished = index >= items.length
+  const identify = exercise.kind === 'identify'
+  const [identified, setIdentified] = useState(false)
 
   function check(input: string) {
     if (!item) return
@@ -33,13 +81,21 @@ export function ExerciseDrill({ exercise, focus, today, onDone }: { exercise: Ex
     setTyped('')
     setResult(null)
     setRevealed(false)
+    setIdentified(false)
+  }
+  function placed(ok: boolean) {
+    if (!item) return
+    setIdentified(true)
+    const t = item.target
+    recordCell(t ? `${t.verbId}:${t.tense ?? 'form'}:${t.cells?.[0] ?? item.label}` : `${exercise.id}:${item.label}`, ok, today)
+    if (!ok) setWrong((w) => [...w, item.label])
   }
 
   const head = (
     <>
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="rose">Exercise {exercise.number}</Badge>
-        <Pages pages={[exercise.page]} />
+        <Pages book={exercise.book} pages={[exercise.page]} />
         <span className="text-xs text-ink-muted">{Math.min(index + 1, items.length)} / {items.length}</span>
       </div>
       <Card className="flex flex-col gap-1 py-4">
@@ -73,16 +129,21 @@ export function ExerciseDrill({ exercise, focus, today, onDone }: { exercise: Ex
       <Card className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-ink-muted">{item.label}</span>
-          {item.tense ? <Badge tone="mist">{TENSE_LABELS[item.tense].en}</Badge> : null}
+          {item.tense && !identify ? <Badge tone="mist">{TENSE_LABELS[item.tense].en}</Badge> : null /* naming the tense is the sorting task itself */}
         </div>
-        <HebrewText size="lg" block data-testid="study-prompt">{item.prompt}</HebrewText>
+        <HebrewText size={identify ? 'xl' : 'lg'} block className={identify ? 'font-bold' : ''} data-testid="study-prompt">{item.prompt}</HebrewText>
         {item.hint ? (
           <p className="text-right text-sm text-ink-muted">
             <HebrewText size="sm">({item.hint})</HebrewText>
           </p>
         ) : null}
       </Card>
-      {exercise.gradable && !unanswered ? (
+      {identify && item.target ? (
+        <>
+          <IdentifyItem key={index} item={item} onAnswer={placed} />
+          {identified ? <Button data-testid="exercise-next" onClick={next}>{index + 1 < items.length ? 'Next' : 'Finish'}</Button> : null}
+        </>
+      ) : exercise.gradable && !unanswered ? (
         <>
           <AnswerInput data-testid="answer-input" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} onSubmit={() => !result && check(typed)} state={state} readOnly={!!result} placeholder="עברית" />
           {result ? (
@@ -92,7 +153,7 @@ export function ExerciseDrill({ exercise, focus, today, onDone }: { exercise: Ex
                 <div className="mt-1 flex flex-col items-end">
                   <Pointed>{item.answerPointed ?? answer}</Pointed>
                   {item.answers.length > 1 ? <HebrewText size="sm" className="text-ink-muted">also: {item.answers.slice(1).join(' / ')}</HebrewText> : null}
-                  {item.keyPage ? <span className="text-xs text-ink-muted">answer key p. {item.keyPage}</span> : null}
+                  {item.keyPage ? <span className="text-xs text-ink-muted">answer key {pageLabel(exercise.book, item.keyPage)}</span> : null}
                 </div>
               </Card>
               <Button data-testid="exercise-next" onClick={next}>{index + 1 < items.length ? 'Next' : 'Finish'}</Button>

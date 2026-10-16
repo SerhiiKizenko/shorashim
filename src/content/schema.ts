@@ -13,6 +13,22 @@ export const TENSE_LABELS: Record<Tense, { en: string; he: string }> = {
   imperative: { en: 'Imperative', he: 'ציווי' },
 }
 
+// ---------------------------------------------------------------- source books
+/** Where a record comes from. The main book is «Шэат иврит II» (PDF page = printed page); anything else the
+ * teacher photographs — today her verb workbook — gets its own id, its own printed page numbers and its own section
+ * in the app. `rank` orders new items across books (the main book first); `prefix` opens the ids of its records
+ * (u04-… for a main-book unit, wb-… for the workbook). */
+export const BOOK_IDS = ['sheat-bet', 'workbook'] as const
+export const BookIdSchema = z.enum(BOOK_IDS)
+export type BookId = z.infer<typeof BookIdSchema>
+export const MAIN_BOOK: BookId = 'sheat-bet'
+export const BOOKS: Record<BookId, { title: string; short: string; rank: number; prefix: string }> = {
+  'sheat-bet': { title: 'Шэат иврит II', short: 'Book', rank: 0, prefix: 'u' },
+  workbook: { title: "the teacher's verb workbook", short: 'Workbook', rank: 1, prefix: 'wb' },
+}
+/** «p. 54» for the main book, «Workbook p. 40» for any other. */
+export const pageLabel = (book: BookId, page: number): string => (book === MAIN_BOOK ? `p. ${page}` : `${BOOKS[book].short} p. ${page}`)
+
 /** Every Hebrew form keeps how the book prints it (`pointed`) and how an Israeli adult types it (`plain`,
  * ktiv male). `plain` is not the pointed form with the marks stripped: דִּבֵּר → people type דיבר. */
 export const HebrewFormSchema = z
@@ -31,11 +47,15 @@ export const ReviewStatus = z.enum(['draft', 'checked'])
  * yet seen printed. */
 export const FlagSchema = z.enum(['unsupported', 'conflict', 'unreadable', 'generated'])
 export type Flag = z.infer<typeof FlagSchema>
-export const SourceSchema = z.object({ page: z.number().int().positive(), note: z.string().optional() }).strict()
+/** A page citation. `book` defaults to the main book, so content written before the workbook arrived still parses. */
+export const SourceSchema = z.object({ book: BookIdSchema.default(MAIN_BOOK), page: z.number().int().positive(), note: z.string().optional() }).strict()
 export type Source = z.infer<typeof SourceSchema>
 
 const shared = {
-  unit: z.number().int().min(1).max(13),
+  /** the book the record comes from; its page fields count that book's printed pages */
+  book: BookIdSchema.default(MAIN_BOOK),
+  /** the main book's unit 1–13; null for a record of another book (the workbook has no units) */
+  unit: z.number().int().min(1).max(13).nullable(),
   sources: z.array(SourceSchema).min(1),
   reviewStatus: ReviewStatus,
   flags: z.array(FlagSchema).default([]),
@@ -61,8 +81,8 @@ export const POS_LABELS: Record<Pos, string> = {
 
 export const VocabEntrySchema = z
   .object({
-    /** u01-v002: unit, then page order */
-    id: z.string().regex(/^u\d{2}-v\d{3}$/),
+    /** u01-v002: unit, then page order; wb-v-dbr-piel: a workbook verb's entry, named after its verb id */
+    id: z.string().regex(/^(u\d{2}-v\d{3}|wb-v-[a-z0-9]+-[a-z]+)$/),
     ...shared,
     pos: PosSchema,
     /** the entry exactly as printed, e.g. «מַבְטִיחַ — לְהַבְטִיחַ ל-» */
@@ -152,8 +172,10 @@ export const VerbSchema = z
     ru: z.string().optional(),
     government: z.string().optional(),
     forms: VerbFormsSchema,
+    /** שם הפעולה as printed (דִּבּוּר, הַפְסָקָה, הִסְתַּכְּלוּת) */
+    verbalNoun: HebrewFormSchema.optional(),
     /** the cells the book itself prints (tables, examples, answer key), and where */
-    checkedAgainst: z.array(z.object({ page: z.number().int().positive(), tense: TenseSchema, cells: z.array(z.string()) }).strict()).default([]),
+    checkedAgainst: z.array(z.object({ book: BookIdSchema.default(MAIN_BOOK), page: z.number().int().positive(), tense: TenseSchema, cells: z.array(z.string()) }).strict()).default([]),
   })
   .strict()
 export type Verb = z.infer<typeof VerbSchema>
@@ -164,8 +186,8 @@ export const GrammarTableSchema = z
   .strict()
 export const GrammarTopicSchema = z
   .object({
-    /** u04-s2: unit + TOC section number */
-    id: z.string().regex(/^u\d{2}-s\d+$/),
+    /** u04-s2: unit + TOC section number; wb-s40: a workbook topic, numbered by the page of its paradigm table */
+    id: z.string().regex(/^(u\d{2}|wb)-s\d+$/),
     ...shared,
     section: z.number().int().positive(),
     titleHe: z.string().min(1),
@@ -189,7 +211,20 @@ export const GrammarTopicSchema = z
   .strict()
 export type GrammarTopic = z.infer<typeof GrammarTopicSchema>
 
-export const ExerciseKind = z.enum(['transform', 'fill', 'conjugate-in-context', 'match', 'questions', 'open'])
+/** identify = «שבצו את הפעלים בטבלה»: each item shows one verb form and the learner names its tense and person. */
+export const ExerciseKind = z.enum(['transform', 'fill', 'conjugate-in-context', 'match', 'questions', 'open', 'identify'])
+/** What an item asks for when the answer is a verb form: the verb, the tense and the person cell(s) that fit the
+ * sentence, or the infinitive / verbal noun. The importer fills `answers` from it (the workbook prints no key). */
+export const ExerciseTargetSchema = z
+  .object({
+    verbId: z.string().min(1),
+    tense: TenseSchema.optional(),
+    /** keys of TENSE_CELLS[tense]; several when more than one person fits (אני in the present: ms and fs) */
+    cells: z.array(z.string().min(1)).optional(),
+    ask: z.enum(['infinitive', 'verbalNoun']).optional(),
+  })
+  .strict()
+export type ExerciseTarget = z.infer<typeof ExerciseTargetSchema>
 export const ExerciseItemSchema = z
   .object({
     /** א, ב, ג … as printed */
@@ -200,6 +235,8 @@ export const ExerciseItemSchema = z
     hint: z.string().optional(),
     /** the tense this item asks for, when the exercise mixes tenses */
     tense: TenseSchema.optional(),
+    /** the verb form the item asks for (see ExerciseTargetSchema); «identify» items show it in `prompt` */
+    target: ExerciseTargetSchema.optional(),
     /** from the answer key; the first is shown on reveal; plain spelling (niqqud never required) */
     answers: z.array(z.string().min(1)).min(1),
     answerPointed: z.string().optional(),
@@ -209,8 +246,8 @@ export const ExerciseItemSchema = z
   .strict()
 export const ExerciseSchema = z
   .object({
-    /** u04-ex2.1: unit + the book's exercise number */
-    id: z.string().regex(/^u\d{2}-ex\d+\.\d+$/),
+    /** u04-ex2.1: unit + the book's exercise number; wb-ex40.1: workbook topic page + ordinal (the workbook prints none) */
+    id: z.string().regex(/^(u\d{2}|wb)-ex\d+\.\d+$/),
     ...shared,
     page: z.number().int().positive(),
     number: z.string().min(1),
@@ -229,7 +266,7 @@ export type ExerciseItem = z.infer<typeof ExerciseItemSchema>
 // ---------------------------------------------------------------- texts, proverbs, prepositions, audio, units
 export const TextSchema = z
   .object({
-    id: z.string().regex(/^u\d{2}-t\d+$/),
+    id: z.string().regex(/^(u\d{2}|wb)-t\d+$/),
     ...shared,
     titleHe: z.string().min(1),
     pages: z.array(z.number().int().positive()).min(1),
@@ -241,7 +278,7 @@ export type Text = z.infer<typeof TextSchema>
 
 export const ProverbSchema = z
   .object({
-    id: z.string().regex(/^u\d{2}-p\d+$/),
+    id: z.string().regex(/^(u\d{2}|wb)-p\d+$/),
     ...shared,
     he: z.string().min(1),
     ru: z.string().optional(),

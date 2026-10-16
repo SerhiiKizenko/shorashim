@@ -1,3 +1,4 @@
+import { BOOKS, MAIN_BOOK, pageLabel, type BookId } from '../content/schema'
 import { ChevronLeft } from 'lucide-react'
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -93,6 +94,57 @@ export function DraftNote({ status, flags = [] }: { status: 'draft' | 'checked';
   )
 }
 
-export const Pages = ({ pages }: { pages: number[] }) => <span className="text-xs text-ink-muted">{pages.length === 1 ? `p. ${pages[0]}` : `pp. ${pages.join(', ')}`}</span>
+/** «p. 54» / «pp. 54, 55» for the main book, «Workbook p. 40» for any other. */
+export const Pages = ({ pages, book = MAIN_BOOK }: { pages: number[]; book?: BookId }) => (
+  <span className="text-xs text-ink-muted">
+    {book === MAIN_BOOK ? '' : `${BOOKS[book].short} `}
+    {pages.length === 1 ? `p. ${pages[0]}` : `pp. ${pages.join(', ')}`}
+  </span>
+)
+/** Every page a record cites, each with its book: «p. 54 · Workbook p. 40». */
+export const Sources = ({ sources }: { sources: { book: BookId; page: number }[] }) => <span className="text-xs text-ink-muted">{[...new Set(sources.map((s) => pageLabel(s.book, s.page)))].join(' · ')}</span>
 
 export const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many)
+
+/** Due counts for the next days as small bars (index 0 = today, overdue included). `data-counts` holds the numbers. */
+export function Forecast({ counts, testId }: { counts: number[]; testId?: string }) {
+  const max = Math.max(1, ...counts)
+  const week = counts.slice(1, 8).reduce((a, b) => a + b, 0)
+  return (
+    <div data-testid={testId} data-counts={counts.join(',')} className="flex flex-col gap-1">
+      <div className="flex h-10 items-end gap-1" aria-hidden>
+        {counts.map((n, i) => (
+          <div key={i} className={`flex-1 rounded-t-sm ${n === 0 ? 'bg-surface-2' : i === 0 ? 'bg-sage-strong' : 'bg-sage'}`} style={{ height: n ? `${Math.max(12, (100 * n) / max)}%` : '3px' }} />
+        ))}
+      </div>
+      <p className="text-xs text-ink-muted">
+        Coming up: {week} due in the next 7 days{counts.length > 8 ? `, ${counts.slice(8).reduce((a, b) => a + b, 0)} the week after` : ''}.
+      </p>
+    </div>
+  )
+}
+
+/** Seven dots, oldest first: the days with at least one answer. There is no streak to lose. */
+export function WeekStrip({ days, testId }: { days: boolean[]; testId?: string }) {
+  const n = days.filter(Boolean).length
+  return (
+    <div data-testid={testId} className="flex items-center gap-2 text-sm text-ink-muted">
+      <span className="flex gap-1" aria-hidden>
+        {days.map((d, i) => (
+          <span key={i} className={`inline-block h-2.5 w-2.5 rounded-full ${d ? 'bg-sage-strong' : 'bg-surface-2'} ${i === days.length - 1 ? 'ring-1 ring-sage-strong ring-offset-1 ring-offset-surface' : ''}`} />
+        ))}
+      </span>
+      <span>{n} of {days.length} days</span>
+    </div>
+  )
+}
+
+/** A thin bar for the session: what is done today against what today holds. */
+export function SessionBar({ done, total }: { done: number; total: number }) {
+  const v = total ? Math.min(1, done / total) : 0
+  return (
+    <div data-testid="study-progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+      <div className="h-full rounded-full bg-sage-strong transition-[width]" style={{ width: `${100 * v}%` }} />
+    </div>
+  )
+}

@@ -1,44 +1,22 @@
-// Practice modes outside the scheduler: «One form» (type single cells) and «Which form is this?» (multiple choice).
-// They record per-cell results for Weak spots but never grade the grid item.
+// Practice modes outside the scheduler: «One form» and «Build from root» (type single cells) and «Which form is
+// this?» (multiple choice). They record per-cell results for Weak spots but never grade the grid item. The single-
+// cell card is also the «mixed cells» phase of Today.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { GRID_COLUMNS, TENSE_LABELS, type Tense, type Verb } from '../../content/schema'
+import { BINYAN_LABELS, GRID_COLUMNS, TENSE_LABELS, type Tense, type Verb } from '../../content/schema'
 import { checkAnswer, type CheckResult } from '../../engine/answer'
+import { shuffle } from '../../engine/choice'
+import { cellQuestions, type CellQuestion } from '../../engine/items'
 import { useProgress } from '../../store/progress'
 import { Badge, Button, Card } from '../components'
-import { AnswerInput, HebrewText, Pointed } from '../hebrew'
-
-interface Q {
-  verb: Verb
-  tense: Tense
-  cell: string
-  label: string
-}
-
-function shuffle<T>(xs: T[], rand: () => number): T[] {
-  const a = [...xs]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1))
-    ;[a[i], a[j]] = [a[j]!, a[i]!]
-  }
-  return a
-}
+import { AnswerInput, HebrewText, MistakeNote, Pointed } from '../hebrew'
 
 /** One question per distinct cell of each verb × tense, shuffled, capped. */
-function questions(verbs: Verb[], tenses: Tense[], cap: number, rand = Math.random): Q[] {
-  const qs: Q[] = []
-  for (const verb of verbs)
-    for (const tense of tenses) {
-      const cells = verb.forms[tense]
-      if (!cells) continue
-      const seen = new Set<string>()
-      for (const col of GRID_COLUMNS[tense]) {
-        if (!cells[col.cell] || seen.has(col.cell)) continue
-        seen.add(col.cell)
-        qs.push({ verb, tense, cell: col.cell, label: col.label })
-      }
-    }
-  return shuffle(qs, rand).slice(0, cap)
+function questions(verbs: Verb[], tenses: Tense[], cap: number, rand = Math.random): CellQuestion[] {
+  return shuffle(
+    verbs.flatMap((verb) => tenses.flatMap((tense) => cellQuestions(verb, tense))),
+    rand,
+  ).slice(0, cap)
 }
 
 function Summary({ right, total, onAgain }: { right: number; total: number; onAgain: () => void }) {
@@ -51,48 +29,56 @@ function Summary({ right, total, onAgain }: { right: number; total: number; onAg
   )
 }
 
-export function FormsPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses: Tense[]; today: string }) {
+/** What the single-cell card shows as its cue: the infinitive (one form), or only root + binyan + tense, so the form
+ * has to be built from the pattern (build from root). */
+export type CellPrompt = 'infinitive' | 'root'
+
+/** One cell: the pronoun and the cue are shown, the learner types the form. Records the cell's result. */
+export function CellCard({ q, prompt, today, onNext, last }: { q: CellQuestion; prompt: CellPrompt; today: string; onNext: (ok: boolean) => void; last: boolean }) {
   const recordCell = useProgress((s) => s.recordCell)
-  const [seed, setSeed] = useState(0)
-  const qs = useMemo(() => questions(verbs, tenses, 10), [verbs, tenses, seed])
-  const [i, setI] = useState(0)
   const [typed, setTyped] = useState('')
   const [result, setResult] = useState<CheckResult | null>(null)
-  const [right, setRight] = useState(0)
-  const q = qs[i]
-  if (!qs.length) return <p className="py-8 text-center text-ink-muted">No forms for this selection.</p>
-  if (!q) return <Summary right={right} total={qs.length} onAgain={() => { setSeed(seed + 1); setI(0); setRight(0); setTyped(''); setResult(null) }} />
   const form = q.verb.forms[q.tense]![q.cell]!
   function check(input: string) {
+    if (result) return
     const r = checkAnswer(input, form)
     setResult(r)
-    recordCell(`${q!.verb.id}:${q!.tense}:${q!.cell}`, r.ok, today)
-    if (r.ok) setRight(right + 1)
+    recordCell(`${q.verb.id}:${q.tense}:${q.cell}`, r.ok, today)
   }
   return (
-    <div className="flex flex-col gap-3 pt-2">
+    <div data-testid="cell-card" data-tense={q.tense} data-label={q.label} className="flex flex-col gap-3 pt-2">
       <div className="flex items-center gap-2">
+        <Badge tone="lavender">{BINYAN_LABELS[q.verb.binyan].en}</Badge>
         <Badge tone="mist">{TENSE_LABELS[q.tense].en}</Badge>
-        <span className="text-xs text-ink-muted">{i + 1} / {qs.length}</span>
       </div>
       <Card className="flex items-center justify-between gap-3">
         <HebrewText size="lg" className="font-semibold">{q.label}</HebrewText>
-        <div className="flex flex-col items-end">
-          <span className="text-xs text-ink-muted">infinitive</span>
-          <HebrewText size="lg" className="font-bold" data-testid="study-prompt">{q.verb.infinitive.pointed}</HebrewText>
-        </div>
+        {prompt === 'infinitive' ? (
+          <div className="flex flex-col items-end">
+            <span className="text-xs text-ink-muted">infinitive</span>
+            <HebrewText size="lg" className="font-bold" data-testid="study-prompt">{q.verb.infinitive.pointed}</HebrewText>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end">
+            <span className="text-xs text-ink-muted">root · binyan · tense</span>
+            <HebrewText size="lg" className="font-bold" data-testid="study-prompt">{q.verb.root}</HebrewText>
+            <HebrewText size="sm" className="text-ink-muted">{BINYAN_LABELS[q.verb.binyan].he} · {TENSE_LABELS[q.tense].he}</HebrewText>
+          </div>
+        )}
       </Card>
-      <AnswerInput data-testid="answer-input" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} onSubmit={() => !result && check(typed)} state={result ? (result.ok ? 'ok' : 'wrong') : 'idle'} readOnly={!!result} placeholder="עברית" />
+      <AnswerInput data-testid="answer-input" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} onSubmit={() => check(typed)} state={result ? (result.ok ? 'ok' : 'wrong') : 'idle'} readOnly={!!result} placeholder="עברית" />
       {result ? (
         <>
-          <Card data-testid="study-answer" className={result.ok ? 'bg-ok/15' : 'bg-bad/10'}>
-            <p className="text-sm font-semibold">{result.ok ? 'Correct' : result.reason === 'final-letter' ? 'Only a final letter is wrong' : 'Not quite'}</p>
+          <Card data-testid="study-answer" className={`flex flex-col gap-2 ${result.ok ? 'bg-ok/15' : 'bg-bad/10'}`}>
+            <p className="text-sm font-semibold">{result.ok ? 'Correct' : result.reason === 'empty' ? 'The form' : 'Not quite'}</p>
             <div className="flex flex-col items-end">
               <Pointed>{form.pointed}</Pointed>
               <HebrewText size="sm" className="text-ink-muted">({form.plain})</HebrewText>
+              {prompt === 'root' ? <HebrewText size="sm" className="text-ink-muted">{q.verb.infinitive.pointed}</HebrewText> : null}
             </div>
+            <MistakeNote result={result} diff />
           </Card>
-          <Button data-testid="practice-next" onClick={() => { setI(i + 1); setTyped(''); setResult(null) }}>{i + 1 < qs.length ? 'Next' : 'Finish'}</Button>
+          <Button data-testid="practice-next" onClick={() => onNext(result.ok)}>{last ? 'Finish' : 'Next'}</Button>
         </>
       ) : (
         <div className="grid grid-cols-2 gap-2">
@@ -104,6 +90,32 @@ export function FormsPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses:
   )
 }
 
+export function FormsPractice({ verbs, tenses, today, prompt = 'infinitive' }: { verbs: Verb[]; tenses: Tense[]; today: string; prompt?: CellPrompt }) {
+  const [seed, setSeed] = useState(0)
+  const qs = useMemo(() => questions(verbs, tenses, 10), [verbs, tenses, seed])
+  const [i, setI] = useState(0)
+  const [right, setRight] = useState(0)
+  const q = qs[i]
+  if (!qs.length) return <p className="py-8 text-center text-ink-muted">No forms for this selection.</p>
+  if (!q) return <Summary right={right} total={qs.length} onAgain={() => { setSeed(seed + 1); setI(0); setRight(0) }} />
+  return (
+    <>
+      <p className="pt-2 text-xs text-ink-muted">{i + 1} / {qs.length}</p>
+      <CellCard
+        key={`${seed}:${i}`}
+        q={q}
+        prompt={prompt}
+        today={today}
+        last={i + 1 >= qs.length}
+        onNext={(ok) => {
+          if (ok) setRight(right + 1)
+          setI(i + 1)
+        }}
+      />
+    </>
+  )
+}
+
 export function WhichPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses: Tense[]; today: string }) {
   const recordCell = useProgress((s) => s.recordCell)
   const [seed, setSeed] = useState(0)
@@ -111,6 +123,8 @@ export function WhichPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses:
   const [i, setI] = useState(0)
   const [pick, setPick] = useState<{ tense: Tense; cell: string } | null>(null)
   const [right, setRight] = useState(0)
+  /** read the form with or without vowel points: unpointed is how Hebrew is printed outside textbooks */
+  const [pointed, setPointed] = useState(true)
   const q = qs[i]
   if (!qs.length) return <p className="py-8 text-center text-ink-muted">No forms for this selection.</p>
   if (!q) return <Summary right={right} total={qs.length} onAgain={() => { setSeed(seed + 1); setI(0); setRight(0); setPick(null) }} />
@@ -130,13 +144,16 @@ export function WhichPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses:
   })
   return (
     <div className="flex flex-col gap-3 pt-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-ink-muted">{i + 1} / {qs.length}</span>
+        <button type="button" data-testid="which-vowels" aria-pressed={pointed} onClick={() => setPointed(!pointed)} className="min-h-10 rounded-full bg-surface-2 px-3 text-sm font-semibold">
+          Vowel points: {pointed ? 'on' : 'off'}
+        </button>
       </div>
       <Card className="flex flex-col items-end gap-1">
         <span className="text-xs text-ink-muted">which form is this?</span>
-        <HebrewText size="xl" className="font-bold" data-testid="study-prompt">{form.pointed}</HebrewText>
-        <HebrewText size="sm" className="text-ink-muted">{q.verb.infinitive.pointed}</HebrewText>
+        <HebrewText size="xl" className="font-bold" data-testid="study-prompt">{pointed ? form.pointed : form.plain}</HebrewText>
+        <HebrewText size="sm" className="text-ink-muted">{pointed ? q.verb.infinitive.pointed : q.verb.infinitive.plain}</HebrewText>
       </Card>
       <div className="grid grid-cols-3 gap-2">
         {options.map((o) => {
@@ -150,7 +167,12 @@ export function WhichPractice({ verbs, tenses, today }: { verbs: Verb[]; tenses:
           )
         })}
       </div>
-      {pick ? <Button data-testid="practice-next" onClick={() => { setI(i + 1); setPick(null) }}>{i + 1 < qs.length ? 'Next' : 'Finish'}</Button> : null}
+      {pick ? (
+        <>
+          {!pointed ? <p className="text-right"><Pointed>{form.pointed}</Pointed></p> : null}
+          <Button data-testid="practice-next" onClick={() => { setI(i + 1); setPick(null) }}>{i + 1 < qs.length ? 'Next' : 'Finish'}</Button>
+        </>
+      ) : null}
     </div>
   )
 }
