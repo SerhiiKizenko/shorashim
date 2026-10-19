@@ -48,7 +48,7 @@ export function Verbs() {
               <Card key={v.id} data-testid={`verb-${v.id}`} className="flex flex-col gap-2 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-col">
-                    <span className="text-sm text-ink-muted">{v.ru ?? ''}</span>
+                    <span className="text-sm text-ink-muted">{v.ru ?? v.en ?? ''}</span>
                     <span className="text-xs text-ink-muted">{v.flags.includes('generated') ? 'pattern cells' : ''}</span>
                   </div>
                   <div className="flex flex-col items-end">

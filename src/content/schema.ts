@@ -17,17 +17,19 @@ export const TENSE_LABELS: Record<Tense, { en: string; he: string }> = {
 /** Where a record comes from. The main book is «Шэат иврит II» (PDF page = printed page); anything else the
  * teacher photographs — today her verb workbook — gets its own id, its own printed page numbers and its own section
  * in the app. `rank` orders new items across books (the main book first); `prefix` opens the ids of its records
- * (u04-… for a main-book unit, wb-… for the workbook). */
-export const BOOK_IDS = ['sheat-bet', 'workbook'] as const
+ * (u04-… for a main-book unit, wb-… for the workbook). Pealim (pealim.com) is a reference, not a book: its «page» is
+ * the dictionary entry number (pealim.com/dict/2-ledaber → 2), and it supplies the model verbs' full tables. */
+export const BOOK_IDS = ['sheat-bet', 'workbook', 'pealim'] as const
 export const BookIdSchema = z.enum(BOOK_IDS)
 export type BookId = z.infer<typeof BookIdSchema>
 export const MAIN_BOOK: BookId = 'sheat-bet'
 export const BOOKS: Record<BookId, { title: string; short: string; rank: number; prefix: string }> = {
   'sheat-bet': { title: 'Шэат иврит II', short: 'Book', rank: 0, prefix: 'u' },
   workbook: { title: "the teacher's verb workbook", short: 'Workbook', rank: 1, prefix: 'wb' },
+  pealim: { title: 'Pealim (pealim.com)', short: 'Pealim', rank: 2, prefix: 'pl' },
 }
-/** «p. 54» for the main book, «Workbook p. 40» for any other. */
-export const pageLabel = (book: BookId, page: number): string => (book === MAIN_BOOK ? `p. ${page}` : `${BOOKS[book].short} p. ${page}`)
+/** «p. 54» for the main book, «Workbook p. 40» for another book, «pealim.com/dict/2» for a Pealim entry. */
+export const pageLabel = (book: BookId, page: number): string => (book === MAIN_BOOK ? `p. ${page}` : book === 'pealim' ? `pealim.com/dict/${page}` : `${BOOKS[book].short} p. ${page}`)
 
 /** Every Hebrew form keeps how the book prints it (`pointed`) and how an Israeli adult types it (`plain`,
  * ktiv male). `plain` is not the pointed form with the marks stripped: דִּבֵּר → people type דיבר. */
@@ -170,15 +172,26 @@ export const VerbSchema = z
     /** pa'al future vowel type */
     paalType: z.enum(['efol', 'efal']).optional(),
     ru: z.string().optional(),
+    /** English gloss as Pealim gives it (model verbs) */
+    en: z.string().optional(),
     government: z.string().optional(),
     forms: VerbFormsSchema,
     /** שם הפעולה as printed (דִּבּוּר, הַפְסָקָה, הִסְתַּכְּלוּת) */
     verbalNoun: HebrewFormSchema.optional(),
     /** the cells the book itself prints (tables, examples, answer key), and where */
     checkedAgainst: z.array(z.object({ book: BookIdSchema.default(MAIN_BOOK), page: z.number().int().positive(), tense: TenseSchema, cells: z.array(z.string()) }).strict()).default([]),
+    /** a model verb: one per binyan, learnt in every tense (the «Model verbs» section) */
+    model: z.boolean().optional(),
+    /** the ־נָה forms (future אתן/הן, imperative אתן) — shown for reading, never a cell and never an accepted answer:
+     * the teacher's grid uses the masculine form, as modern Hebrew does */
+    naForms: z.object({ future: HebrewFormSchema.optional(), imperative: HebrewFormSchema.optional() }).strict().optional(),
+    /** one recording per form: clip key (`past.ani`, `infinitive`, `na.future` …) → encrypted file in the data dir */
+    audio: z.object({ type: z.string().min(1), clips: z.record(z.string(), z.string().min(1)) }).strict().optional(),
   })
   .strict()
 export type Verb = z.infer<typeof VerbSchema>
+/** The clip key of a form: `<tense>.<cell>`, `infinitive`, or `na.<tense>` for a ־נָה form. */
+export const clipKey = (tense: Tense, cell: string): string => `${tense}.${cell}`
 
 // ---------------------------------------------------------------- grammar topics and exercises
 export const GrammarTableSchema = z

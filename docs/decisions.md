@@ -99,3 +99,16 @@ entries below are what this session added or made concrete.
   weak roots get nothing. The importer compares the pattern with every printed cell on every import (G3 in code).
 - **2026-10-16 — Russian glosses for workbook verbs come from general usage** (`glosses.json`), each word card
   flagged `unsupported` until the teacher confirms.
+- **2026-10-19 — Pealim is a third source (`book: "pealim"`, page = the entry number, shown «pealim.com/dict/N»).**
+  `pnpm pealim <url…>` copies the active table (the passive table is skipped), Pealim's ktiv male and one recording per
+  form. A personal-study copy: pages and MP3s stay in `MATERIALS_DIR/pealim/`; only ciphertext ships.
+- **2026-10-19 — Model verbs: לדבר (pi'el), להרגיש (hif'il), להתלבש (hitpa'el), להיכנס (nif'al)** — the teacher's
+  method: one verb per binyan in every tense, known by heart. Chosen by Serhii: the existing grid, one tense per grid
+  (16 grids, scheduled like any other), a section session runs one tense across the four verbs in binyan order.
+- **2026-10-19 — ־נָה forms are for reading only (`naForms`).** The teacher's grid merges אתן / הן with אתם / הם, and
+  Pealim notes that modern Hebrew uses the masculine form; they are never a cell or an accepted answer.
+- **2026-10-19 — Pealim's complete pointing replaces a page's partial pointing when the letters agree** (Serhii: text and
+  recording should match). לדבר: 24 of 24 cells agree with workbook p.40, 19 take Pealim's points. A derived infinitive
+  that Pealim prints clears `generated`. Workbook prints stay out of both rules (their pointing is partial by design).
+- **2026-10-19 — The model verbs carry Pealim's English gloss (`en`)** — Serhii: «better to stick to English». The book's
+  Russian stays wherever the book prints one.

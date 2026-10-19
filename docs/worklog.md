@@ -206,3 +206,27 @@ mixed-cell and sort answers go to cell stats only.
 
 **Next**: Serhii's go-ahead to commit and push (deploys); at class, the teacher's corrections → `content/verified/`
 → `checked`, `generated` cleared per confirmed cell.
+
+## 2026-10-19 — session 6 (model verbs from Pealim: the data)
+
+**Scope (Serhii)**: a separate section to drill four verbs in every active tense — לדבר, להרגיש, להתלבש, להיכנס (one per
+binyan, the teacher's method); plan in `~/.claude/plans/i-want-to-create-breezy-adleman.md`. Chosen: the existing grid,
+one tense per grid; ־נָה not drilled; Pealim's full pointing; English glosses for these verbs.
+
+**Done (chunk 1, data)**
+- `pnpm pealim <url…>`: parser (`scripts/lib/pealim.ts`, 8 tests on a hand-written pa'al fixture) + CLI; 4 pages, 108
+  recordings (27 per verb, ~5 KB each) in `MATERIALS_DIR/pealim/`; a second run downloads nothing.
+- Schema: book `pealim`; verb `model`, `naForms`, `audio`, `en`. Importer: four-digit page files, Pealim's points over a
+  partial print with the same letters, a derived infinitive confirmed by Pealim clears `generated`, «Model verbs» in the
+  report. Result: 73 verbs (2 new); לדבר 24/24 cells agree with workbook p.40 (19 re-pointed); generator self-check 166
+  cells, 0 mismatches (hif'il ר.ג.ש and hitpa'el ל.ב.ש added); להרגיש pointed. Bundle 303 KB.
+- Caught on the first import: the infinitive rule, unscoped, re-pointed לבקר / לבשל from workbook p.41 and cleared
+  להפסיק's flag — scoped to Pealim (baseline report diff).
+
+**Tests**: vitest 100, Playwright 20 (both projects), validate ok.
+
+**Finding (not fixed)**: `v-psq-hifil` keeps `generated` though no cell is generated and workbook p.49 prints its
+infinitive (the flag comes from p.50's «Infinitive derived from the root»).
+
+**Next (chunk 2)**: encrypt the recordings (`public/data/forms/`, synthetic IV) + precache; the «Model verbs» screen,
+tense sessions (`/study/model?tense=`), the read-only table with 🔊 and the ־נָה line, 🔊 after Check; dummy bundle + e2e.

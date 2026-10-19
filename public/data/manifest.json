@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "builtAt": "2026-10-16T11:36:12.126Z",
+  "builtAt": "2026-10-19T16:52:54.472Z",
   "bundle": {
     "file": "bundle.enc",
-    "bytes": 298046
+    "bytes": 310348
   },
   "audio": [
     {
@@ -136,8 +136,12 @@
       "total": 57,
       "checked": 0
     },
+    "pealim": {
+      "total": 0,
+      "checked": 0
+    },
     "verbs": {
-      "total": 71,
+      "total": 73,
       "checked": 0
     },
     "exercises": {

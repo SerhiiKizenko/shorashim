@@ -21,6 +21,7 @@ pnpm render --pages 54-55,8 --columns 8   # book pages → sources/pages/ (300 d
 pnpm intake <pdf…>                   # homework PDFs → MATERIALS_DIR/teacher/intake (md5, idempotent) + renders in sources/intake/<md5:8>/
 pnpm intake --assign <md5:8> 1=workbook:40 …   # which book and printed page each render is → sources/pages/<book>/; --status
 pnpm check-pass <file>               # one transcription pass against the schema and the workbook conventions
+pnpm pealim <url…>                   # Pealim verb page → MATERIALS_DIR/pealim/<verbId>/ (page + one MP3 per form, idempotent) + sources/transcribed/pealim/pNNN.json
 pnpm diff-pass [workbook] 54 [--accept 1]   # compare the two transcription passes; write the resolved pNNN.json
 pnpm import-book                     # sources/transcribed/pNNN.json → content/*.json (all draft) + content/import-report.md
 pnpm find "להבטיח"                   # niqqud-insensitive search over the transcriptions
@@ -54,7 +55,8 @@ pnpm icons                           # PWA icons from public/icon.svg
   `DUMMY_GLOSSES`, `KTOV_CELLS`; `given.progress(state)` seeds the store before load; `when.passCurrentCard()`
   answers any card — grid, single cell, exercise, 4-choice, typed; `get.progressOf(id)`, `get.reviews()`).
 - `scripts/` — pipeline (Node/tsx); `scripts/lib/paths.ts` holds every path (per-book dirs `sources/{pages,transcribed}/<book>/`);
-  `scripts/lib/transcription.ts` the per-page transcription record; `scripts/lib/piel-future.ts` the p.54 pattern as
+  `scripts/lib/transcription.ts` the per-page transcription record; `scripts/lib/pealim.ts` reads a Pealim verb page (active
+  table, ktiv male, one clip per form, ־נָה apart); `scripts/lib/piel-future.ts` the p.54 pattern as
   data (pointed); `scripts/lib/paradigm.ts` plain paradigms for pi'el / hif'il / hitpa'el (the importer fills unprinted
   cells, flags them `generated`, and reports every printed cell the pattern does not reproduce);
   `scripts/make-test-bundle.ts` the dummy bundle (12 everyday words, לכתוב future + past + present, 1 exercise, a

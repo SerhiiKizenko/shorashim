@@ -20,6 +20,8 @@ export const AUDIO_DIR = join(MATERIALS_DIR, 'audio')
 export const TEACHER_DIR = join(MATERIALS_DIR, 'teacher')
 /** incoming PDFs from the teacher, copied here by `pnpm intake` (plaintext, never in the repo) */
 export const TEACHER_INTAKE_DIR = join(TEACHER_DIR, 'intake')
+/** Pealim verb pages and their recordings, one folder per verb id (`pnpm pealim`; plaintext, never in the repo) */
+export const PEALIM_DIR = join(MATERIALS_DIR, 'pealim')
 
 export const CONTENT_DIR = join(ROOT, 'content') // gitignored plaintext
 export const INVENTORY_JSON = join(CONTENT_DIR, 'inventory.json')

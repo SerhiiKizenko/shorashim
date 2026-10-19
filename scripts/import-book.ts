@@ -4,7 +4,7 @@
 // estimates. Run: pnpm import-book
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { BOOK_IDS, TENSE_CELLS, type Bundle, type BundleInput, type HebrewForm, type Tense } from '../src/content/schema'
+import { BOOK_IDS, MAIN_BOOK, pageLabel, TENSE_CELLS, type Bundle, type BundleInput, type HebrewForm, type Tense } from '../src/content/schema'
 import { saveContentFile, stripMarks, translitRoot } from './lib/content'
 import { IMPORT_REPORT, INVENTORY_JSON, TRANSCRIBED_DIR } from './lib/paths'
 import { generatePlain } from './lib/paradigm'
@@ -28,11 +28,12 @@ const pad3 = (n: number) => String(n).padStart(3, '0')
 const report: string[] = []
 const derivedPlain: string[] = []
 
-/** A transcribed form → a record form: `plain` defaults to the pointed form with its marks stripped. */
-function form(f: { pointed: string; plain?: string; variants?: string[] }, where: string): HebrewForm {
+/** A transcribed form → a record form: `plain` defaults to the pointed form with its marks stripped. Listed for review
+ * unless `quiet` (Pealim prints its ktiv male whenever it differs, so a missing one is not a guess). */
+function form(f: { pointed: string; plain?: string; variants?: string[] }, where: string, quiet = false): HebrewForm {
   const pointed = f.pointed.normalize('NFC')
   const plain = (f.plain ?? stripMarks(pointed)).normalize('NFC')
-  if (!f.plain && /[ְ-ׇ]/.test(pointed)) derivedPlain.push(`${where}: ${pointed} → ${plain}`)
+  if (!quiet && !f.plain && /[ְ-ׇ]/.test(pointed)) derivedPlain.push(`${where}: ${pointed} → ${plain}`)
   return { pointed, plain, ...(f.variants ? { variants: f.variants } : {}) }
 }
 
@@ -41,7 +42,8 @@ const inventory = JSON.parse(await readFile(INVENTORY_JSON, 'utf8')) as Inventor
 const pages: Transcription[] = []
 for (const book of BOOK_IDS) {
   const dir = join(TRANSCRIBED_DIR, book)
-  const files = (await readdir(dir).catch(() => [] as string[])).filter((f) => /^p\d{3}\.json$/.test(f)).sort()
+  // three digits or more: Pealim entry numbers run past 999 (p1993.json)
+  const files = (await readdir(dir).catch(() => [] as string[])).filter((f) => /^p\d{3,}\.json$/.test(f)).sort()
   for (const f of files) {
     const p = TranscriptionSchema.safeParse(JSON.parse(await readFile(join(dir, f), 'utf8')))
     if (!p.success) {
@@ -97,24 +99,42 @@ const formsOf = (v: Verb) => (v.forms ?? (v.forms = {})) as Record<string, Cells
 /** printed cells per verb, `tense.cell` → page, for the generator's self-check */
 const printedAt = new Map<string, Map<string, { book: string; page: number }>>()
 const rootOf = new Map<string, string>()
+/** verbs whose infinitive Pealim prints: its full pointing confirms (or corrects) a derived one. Workbook prints stay
+ * out of this — their pointing is partial by design, so the first reading is kept as before. */
+const printedInfinitive = new Set<string>()
+/** per verb: Pealim's cells checked against the cells an earlier page printed */
+const pealimCheck = new Map<string, { compared: number; disagree: number; repointed: number }>()
 for (const p of pages) {
+  const quiet = p.book === 'pealim'
   for (const tv of p.verbs) {
     const id = `v-${translitRoot(tv.root)}-${tv.binyan}`
     const letters = stripMarks(tv.root).replace(/[^א-ת]/g, '')
     if (rootOf.has(id) && rootOf.get(id) !== letters) throw new Error(`${id}: two roots map to one id (${rootOf.get(id)} / ${letters}) — fix translitRoot before importing`)
     rootOf.set(id, letters)
     let v = verbs.find((x) => x.id === id)
-    const infinitive = form(tv.infinitive, `${id} infinitive`)
+    const infinitive = form(tv.infinitive, `${id} infinitive`, quiet)
+    const printsInfinitive = p.book === 'pealim' && isPointed(infinitive.pointed) && !tv.flags.includes('generated')
     if (!v) {
       v = { id, book: p.book, unit: p.unit, sources: [], reviewStatus: 'draft', flags: [], infinitive, root: tv.root.normalize('NFC'), binyan: tv.binyan, group: tv.group, forms: {}, checkedAgainst: [] }
       verbs.push(v)
     } else if (!isPointed(v.infinitive.pointed) && isPointed(infinitive.pointed)) v.infinitive = infinitive
+    else if (printsInfinitive && !printedInfinitive.has(id) && v.infinitive.pointed !== infinitive.pointed) {
+      // a derived pointing meets a printed one: the print wins
+      selfCheck.push(`${id} infinitive: derived ${v.infinitive.pointed}, printed ${infinitive.pointed} (${p.book} p.${p.page}) — the print is kept`)
+      v.infinitive = infinitive
+    }
+    if (printsInfinitive) printedInfinitive.add(id)
     if (!v.sources!.some((s) => s.book === p.book && s.page === p.page)) v.sources!.push({ book: p.book, page: p.page })
     v.flags = [...new Set([...(v.flags ?? []), ...tv.flags])]
     if (tv.notes && !(v.notes ?? '').includes(tv.notes)) v.notes = v.notes ? `${v.notes} · ${tv.notes}` : tv.notes
     if (tv.paalType) v.paalType = tv.paalType
     if (tv.ru && !v.ru) v.ru = tv.ru.normalize('NFC')
+    if (tv.en && !v.en) v.en = tv.en
     if (tv.government && !v.government) v.government = tv.government
+    // Pealim: a model verb, its ־נָה forms (for reading only) and one recording per form (encrypted by pnpm encrypt)
+    if (tv.model) v.model = true
+    if (tv.naForms) v.naForms = Object.fromEntries(Object.entries(tv.naForms).map(([t, f]) => [t, form(f, `${id} ־נָה ${t}`, quiet)]))
+    if (tv.audio?.length) v.audio = { type: 'audio/mpeg', clips: Object.fromEntries(tv.audio.map((k) => [k, `forms/${id}/${k}.enc`])) }
     const forms = formsOf(v)
     const at = printedAt.get(id) ?? new Map()
     printedAt.set(id, at)
@@ -123,8 +143,20 @@ for (const p of pages) {
       const printed: string[] = []
       for (const [cell, f] of Object.entries(cells ?? {})) {
         if (!(TENSE_CELLS[tense as Tense] as readonly string[]).includes(cell)) throw new Error(`${id}: unknown cell ${tense}.${cell} on ${p.book} p.${p.page}`)
-        const next = form(f, `${id} ${tense}.${cell}`)
+        const next = form(f, `${id} ${tense}.${cell}`, quiet)
         const prev = t[cell]
+        if (prev && p.book === 'pealim') {
+          const c = pealimCheck.get(id) ?? { compared: 0, disagree: 0, repointed: 0 }
+          c.compared++
+          if (prev.plain !== next.plain) c.disagree++
+          // same letters, different points: a page's partial pointing gives way to Pealim's complete one (decided
+          // 2026-10-19 — the model verbs are read and heard, so text and recording should match)
+          else if (prev.pointed !== next.pointed) {
+            c.repointed++
+            t[cell] = next
+          }
+          pealimCheck.set(id, c)
+        }
         if (prev && prev.plain !== next.plain) {
           // two printed cells disagree: keep the first, flag both
           conflicts.push(`${id} ${tense}.${cell}: ${prev.plain} vs ${next.plain} (${p.book} p.${p.page})`)
@@ -195,6 +227,11 @@ for (const v of verbs) {
   if (missing.length) {
     if (!v.flags!.includes('generated')) v.flags!.push('generated')
     generated.push(`${v.id}: ${missing.length} generated (${before} printed) — ${[...new Set(missing.map((m) => m.split('.')[0]))].join(', ')}`)
+  } else if (printedInfinitive.has(v.id) && v.flags!.includes('generated')) {
+    // nothing generated, and Pealim prints the infinitive: the `generated` a transcription put on its derived
+    // infinitive (or pointing) no longer holds
+    v.flags = v.flags!.filter((f) => f !== 'generated')
+    generated.push(`${v.id}: no cell generated; the derived infinitive is now printed (${v.sources!.map((s) => pageLabel(s.book ?? MAIN_BOOK, s.page)).join(', ')}) — flag cleared`)
   }
   for (const [tense, cells] of Object.entries(forms)) if (!Object.keys(cells).length) delete forms[tense]
 }
@@ -413,6 +450,18 @@ report.push('', `## Verbs: ${verbs.length} (${verbs.filter((v) => v.flags?.inclu
 report.push('', `## Exercises: ${exercises.length}; items without an answer: ${missingAnswers.length}`, '', ...missingAnswers.map((m) => `- ${m}`))
 report.push('', `## Generator vs print (G3 self-check): ${compared} printed cells compared, ${selfCheck.length} mismatch(es)`, '', ...selfCheck.map((m) => `- ${m}`))
 report.push('', `## Printed cells that disagree: ${conflicts.length}`, '', ...conflicts.map((m) => `- ${m}`))
+const models = verbs.filter((v) => v.model)
+report.push(
+  '',
+  `## Model verbs (Pealim): ${models.length}`,
+  '',
+  ...models.map((v) => {
+    const cells = Object.values(formsOf(v)).reduce((n, c) => n + Object.keys(c).length, 0)
+    const pc = pealimCheck.get(v.id)
+    const pattern = selfCheck.filter((s) => s.startsWith(`${v.id} `)).length
+    return `- ${v.id} ${v.infinitive.pointed} (${v.binyan}): ${cells} cells, ${Object.keys(v.audio?.clips ?? {}).length} clips · ${v.sources!.map((s) => pageLabel(s.book ?? MAIN_BOOK, s.page)).join(', ')} · Pealim vs earlier prints: ${pc ? `${pc.compared} cells compared, ${pc.disagree} disagree, ${pc.repointed} take Pealim's pointing` : 'nothing printed earlier'} · pattern self-check: ${pattern} mismatch(es) · flags: ${v.flags!.join(', ') || 'none'}`
+  }),
+)
 report.push('', `## Workbook items whose answer could not be derived: ${unresolved.length}`, '', ...unresolved.map((m) => `- ${m}`))
 report.push('', `## Workbook verbs without a gloss (no word card): ${noGloss.length}`, '', ...noGloss.map((m) => `- ${m}`))
 const wb = (xs: { book?: string }[]) => xs.filter((x) => x.book === 'workbook').length

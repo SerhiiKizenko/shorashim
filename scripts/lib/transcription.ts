@@ -32,11 +32,17 @@ export const TVerb = z
     group: RootGroupSchema,
     paalType: z.enum(['efol', 'efal']).optional(),
     ru: z.string().optional(),
+    /** Pealim's English gloss */
+    en: z.string().optional(),
     government: z.string().optional(),
     /** cells the page prints, per tense */
     forms: z.partialRecord(TenseSchema, z.record(z.string(), Form)).optional(),
     /** שם הפעולה, when the page prints it */
     verbalNoun: Form.optional(),
+    /** Pealim: a model verb (see VerbSchema.model), its ־נָה forms, and the clip keys that have a recording on disk */
+    model: z.boolean().optional(),
+    naForms: z.object({ future: Form.optional(), imperative: Form.optional() }).strict().optional(),
+    audio: z.array(z.string()).optional(),
     flags: z.array(FlagSchema).default([]),
     notes: z.string().optional(),
   })
@@ -110,7 +116,8 @@ export const TranscriptionSchema = z
     /** which book the page is from; its printed page number is `page` */
     book: BookIdSchema.default(MAIN_BOOK),
     unit: z.number().int().min(1).max(13).nullable(),
-    kind: z.enum(['vocab', 'grammar', 'exercises', 'key', 'text', 'proverbs', 'instructions', 'mixed']),
+    /** reference = a Pealim entry: one verb's full table, copied by `pnpm pealim` (not read from a scan) */
+    kind: z.enum(['vocab', 'grammar', 'exercises', 'key', 'text', 'proverbs', 'instructions', 'mixed', 'reference']),
     pass: z.union([z.literal(1), z.literal(2)]),
     readAt: z.string(),
     /** which renders were read */

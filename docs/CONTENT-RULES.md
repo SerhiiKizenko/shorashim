@@ -59,6 +59,17 @@ merges them (verb `forms` merge per cell) and validates. `pnpm validate` must be
   `git diff --cached --name-only | grep -E '^content/|^sources/|\.env|\.mp3'` must print nothing
   (`src/content/` is code and is committed).
 
+## Pealim (`book: "pealim"`)
+
+Model verbs come from Pealim: `pnpm pealim https://www.pealim.com/dict/2-ledaber/ …` (`scripts/lib/pealim.ts`). Nothing is
+typed by hand: the page's active table is read by cell id (`AP-*` present, `PERF-*` past, `IMPF-*` future, `IMP-*`
+imperative, `INF-L`), `pointed` = Pealim's vowelled form, `plain` = the ktiv male Pealim prints next to it (the stripped
+form when it prints none), «!» and direction marks dropped. Future and imperative ־נָה (`IMPF-2fp`/`3fp`, `IMP-2fp`) go to
+`naForms`; the passive table and the «aux forms» (colloquial stress) are skipped. A page whose root has special
+conjugation properties, or that lacks a cell or a recording, stops the command. Records: `unit: null`, `page` = the entry
+number, `kind: "reference"`, `model: true`, `audio` = the clip keys on disk, `en` = Pealim's gloss. On import a printed
+cell of another page still wins on letters (a different `plain` is a `conflict`); Pealim only adds its points.
+
 ## The teacher's verb workbook (`book: "workbook"`)
 
 Homework arrives as CamScanner PDFs of pages from the teacher's verb workbook (title unknown). `pnpm intake <pdf…>`
