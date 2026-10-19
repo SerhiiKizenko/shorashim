@@ -45,22 +45,26 @@ pnpm icons                           # PWA icons from public/icon.svg
   options; `src/engine/habit.ts` — week dots, answers per day.
 - `src/store/progress.ts` (localStorage `sh.progress[:dir]`, backup/restore schema, tense focus, per-cell stats),
   `src/store/content.ts` (unlock, cached raw key `sh.rawKey[:dir]`).
-- `src/ui/` — screens (`Home`, `Study` + `drills/`, `Verbs`, `Units`, `UnitScreen`, `GrammarTopic`, `Listen`,
-  `Weak`, `Settings`, `Help`, `Onboarding`, `Lock`), `ParadigmGrid` (the teacher's grid), `hebrew.tsx` (`HebrewText`,
+- `src/ui/` — screens (`Home`, `Study` + `drills/`, `Verbs`, `ModelVerbs` + `VerbTable` (the model verbs: one tense across
+  the four, `/study/model?tense=`; the read-only table), `Units`, `UnitScreen`, `GrammarTopic`, `Listen`,
+  `Weak`, `Settings`, `Help`, `Onboarding`, `Lock`), `ParadigmGrid` (the teacher's grid), `FormAudio` (one form's
+  recording), `hebrew.tsx` (`HebrewText`,
   `AnswerInput`), `components.tsx` (`Screen`, `Button`, `Card`, `GradeBar`).
 - `src/main.tsx` — service-worker registration; a new build reloads the page only outside `#/study/…`.
-- `vite.config.ts` — PWA: precache = shell + `data/bundle.enc` + `data/manifest.json` (+ the dummy bundle's two
-  files); audio is runtime-cached on first play, never precached.
+- `vite.config.ts` — PWA: precache = shell + `data/bundle.enc` + `data/manifest.json` + `data/forms/**` (the model
+  verbs' recordings, ~0.6 MB) (+ the dummy bundle's files); the book's tracks are runtime-cached on first play.
 - `e2e/` — `smoke.spec.ts` + `drivers/trainer.driver.ts` (given / when / get; `TEST_IDS`, `DUMMY_ANSWERS`,
   `DUMMY_GLOSSES`, `KTOV_CELLS`; `given.progress(state)` seeds the store before load; `when.passCurrentCard()`
-  answers any card — grid, single cell, exercise, 4-choice, typed; `get.progressOf(id)`, `get.reviews()`).
+  answers any card — grid (any tense, `KTOV_GRID`), single cell, exercise, 4-choice, typed; `get.progressOf(id)`,
+  `get.reviews()`; model verbs: `when.openModelVerbs/startModelTense/openModelVerb/playForm`, `get.formAudio()`).
 - `scripts/` — pipeline (Node/tsx); `scripts/lib/paths.ts` holds every path (per-book dirs `sources/{pages,transcribed}/<book>/`);
   `scripts/lib/transcription.ts` the per-page transcription record; `scripts/lib/pealim.ts` reads a Pealim verb page (active
   table, ktiv male, one clip per form, ־נָה apart); `scripts/lib/piel-future.ts` the p.54 pattern as
   data (pointed); `scripts/lib/paradigm.ts` plain paradigms for pi'el / hif'il / hitpa'el (the importer fills unprinted
   cells, flags them `generated`, and reports every printed cell the pattern does not reproduce);
-  `scripts/make-test-bundle.ts` the dummy bundle (12 everyday words, לכתוב future + past + present, 1 exercise, a
-  workbook topic `wb-s1` with a «sort into the table» exercise, 1 WAV track; general Hebrew, nothing from the book).
+  `scripts/make-test-bundle.ts` the dummy bundle (12 everyday words, לכתוב in every tense and as the dummy model verb
+  with ־נָה forms and 3 tone clips, 1 exercise, a workbook topic `wb-s1` with a «sort into the table» exercise, 1 WAV
+  track; general Hebrew, nothing from the book).
 - `content/` (gitignored) — `{vocab,verbs,grammar,exercises,texts,proverbs,prepositions,units,audio}.json`,
   `verified/*.ts`, `inventory.json`, `import-report.md`. `sources/` (gitignored) — `pages/`, `transcribed/`.
 

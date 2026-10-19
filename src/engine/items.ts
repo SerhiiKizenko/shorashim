@@ -1,7 +1,7 @@
 // Turns the content bundle into schedule items and applies the tense focus. Progress is keyed by item id, and
 // a verb's grid has one id per tense (`grid:<verbId>:<tense>`), so turning a tense off only hides its items —
 // nothing is deleted — and turning it back on finds the same progress.
-import { GRID_COLUMNS, TENSES, type BookId, type Bundle, type Tense, type Verb } from '../content/schema'
+import { BINYANIM, GRID_COLUMNS, TENSES, type BookId, type Bundle, type Tense, type Verb } from '../content/schema'
 import { interleaveByCluster, isDue, type ProgressMap, type SchedItem } from './scheduler'
 
 export const vocabItemId = (vocabId: string) => `vocab:${vocabId}`
@@ -50,6 +50,20 @@ export function topicItemIds(topic: { verbIds: string[]; exerciseIds: string[] }
   return ids
 }
 export const isTopicItem = (item: SchedItem, ids: Set<string>, verbIds: Set<string>): boolean => ids.has(item.id) || (item.kind === 'grid' && verbIds.has(item.id.split(':')[1] ?? ''))
+
+/** The model verbs (one per binyan, learnt in every tense) in binyan order: pi'el, hif'il, hitpa'el, nif'al. */
+export function modelVerbs(verbs: Verb[]): Verb[] {
+  return verbs.filter((v) => v.model).sort((a, b) => BINYANIM.indexOf(a.binyan) - BINYANIM.indexOf(b.binyan))
+}
+
+/** A «Model verbs» session: one tense across the model verbs, in binyan order, so the same slot is seen moving from
+ * binyan to binyan. The tense focus does not apply (the section is every tense by design); the items are the ordinary
+ * grid items, so their progress is the one «Today» uses. */
+export function modelGridQueue(verbs: Verb[], tense: Tense): string[] {
+  return modelVerbs(verbs)
+    .filter((v) => Object.keys(v.forms[tense] ?? {}).length)
+    .map((v) => gridItemId(v.id, tense))
+}
 
 /** Keeps items with no tense (vocabulary, prepositions, untagged exercises) and items drilling at least one
  * tense in the focus. */

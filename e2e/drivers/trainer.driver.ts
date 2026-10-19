@@ -66,6 +66,15 @@ export const TEST_IDS = {
   settingsReset: 'settings-reset',
   settingsResetYes: 'settings-reset-yes',
   settingsMsg: 'settings-msg',
+  gridDrill: 'grid-drill',
+  homeModel: 'home-model',
+  verbsModel: 'verbs-model',
+  modelTense: (tense: string) => `model-tense-${tense}`,
+  modelVerb: (verbId: string) => `model-verb-${verbId}`,
+  tableDrill: (tense: string) => `table-drill-${tense}`,
+  naForm: (tense: string) => `na-${tense}`,
+  formAudioButton: (clip: string) => `form-audio-${clip}`,
+  formAudio: 'form-audio',
 } as const
 
 /** The dummy bundle's answers, keyed by what the card shows as its prompt (a Russian gloss, or an exercise line). */
@@ -109,6 +118,13 @@ export const lettersOnly = (s: string): string => s.replace(/[^\u05D0-\u05EA ]/g
 
 // לכתוב, future, in the teacher's column order: אני אתה את אנחנו אתם אתן הוא היא הם-הן (general Hebrew, not book content)
 export const KTOV_FUTURE = ['אכתוב', 'תכתוב', 'תכתבי', 'נכתוב', 'תכתבו', 'תכתבו', 'יכתוב', 'תכתוב', 'יכתבו']
+/** לכתוב typed into a whole grid, per tense, in the grid's row order (GRID_COLUMNS). */
+export const KTOV_GRID: Record<string, string[]> = {
+  future: KTOV_FUTURE,
+  past: ['כתבתי', 'כתבת', 'כתבת', 'כתבנו', 'כתבתם', 'כתבתן', 'כתב', 'כתבה', 'כתבו'],
+  present: ['כותב', 'כותבת', 'כותבים', 'כותבות'],
+  imperative: ['כתוב', 'כתבי', 'כתבו'],
+}
 /** לכתוב by tense and the pronoun a single-cell card shows. */
 export const KTOV_CELLS: Record<string, Record<string, string>> = {
   future: { אני: 'אכתוב', אתה: 'תכתוב', את: 'תכתבי', אנחנו: 'נכתוב', אתם: 'תכתבו', הוא: 'יכתוב', היא: 'תכתוב', 'הם-הן': 'יכתבו' },
@@ -128,18 +144,21 @@ export class TrainerDriver {
     reloaded: async () => {
       await this.page.reload()
     },
-    /** Waits until the service worker controls the page and has the dummy manifest in its precache. */
+    /** Waits until the service worker is activated, controls the page, has nothing newer installing, and holds the
+     * dummy manifest in its precache. Polled with expect.poll: waitForFunction does not await an async predicate (the
+     * returned Promise counts as truthy), so the earlier check passed at once and only a fast install hid it. */
     serviceWorkerReady: async () => {
-      await this.page.waitForFunction(
-        async () => {
-          const reg = await navigator.serviceWorker.getRegistration()
-          if (!reg?.active || !navigator.serviceWorker.controller) return false
-          const hit = await caches.match(new URL('data-test/manifest.json', location.href).href, { ignoreSearch: true })
-          return !!hit
-        },
-        undefined,
-        { timeout: 20_000 },
-      )
+      await expect
+        .poll(
+          () =>
+            this.page.evaluate(async () => {
+              const reg = await navigator.serviceWorker.getRegistration()
+              if (reg?.active?.state !== 'activated' || reg.installing || !navigator.serviceWorker.controller) return false
+              return !!(await caches.match(new URL('data-test/manifest.json', location.href).href, { ignoreSearch: true }))
+            }),
+          { timeout: 20_000 },
+        )
+        .toBe(true)
     },
     /** Writes the stored progress state before the app loads (once per tab: a reload keeps what the app saved since).
      * Missing settings are filled from the defaults by the store's merge. */
@@ -282,7 +301,8 @@ export class TrainerDriver {
     passCurrentCard: async () => {
       await this.page.getByTestId(/^(study-prompt|study-finished)$/).first().waitFor()
       if (await this.byId(TEST_IDS.gridCell(0)).isVisible()) {
-        await this.when.fillGrid(KTOV_FUTURE)
+        const tense = (await this.byId(TEST_IDS.gridDrill).getAttribute('data-tense')) ?? 'future'
+        await this.when.fillGrid(KTOV_GRID[tense] ?? KTOV_FUTURE)
         await this.when.checkGrid()
         await this.when.continueAfterGrid()
         return
@@ -325,6 +345,20 @@ export class TrainerDriver {
     playTrack: async (track: number) => {
       await this.byId(TEST_IDS.listenPlay(track)).click()
     },
+    openModelVerbs: async () => {
+      await this.byId(TEST_IDS.homeModel).click()
+    },
+    /** «Model verbs»: one tense across the model verbs. */
+    startModelTense: async (tense: string) => {
+      await this.byId(TEST_IDS.modelTense(tense)).click()
+    },
+    openModelVerb: async (verbId: string) => {
+      await this.byId(TEST_IDS.modelVerb(verbId)).click()
+    },
+    /** A form's speaker button (`past.ani`, `infinitive`, `na.future` …): fetches, decrypts and plays its clip. */
+    playForm: async (clip: string) => {
+      await this.byId(TEST_IDS.formAudioButton(clip)).first().click()
+    },
     openSettings: async () => {
       await this.byId(TEST_IDS.homeSettings).click()
     },
@@ -360,6 +394,13 @@ export class TrainerDriver {
     remaining: () => this.byId(TEST_IDS.studyRemaining),
     finished: () => this.byId(TEST_IDS.studyFinished),
     audio: () => this.byId(TEST_IDS.audioEl),
+    /** The shared hidden <audio> that plays a form's recording (its src is a blob: URL once a clip is decrypted). */
+    formAudio: () => this.byId(TEST_IDS.formAudio),
+    formAudioButton: (clip: string) => this.byId(TEST_IDS.formAudioButton(clip)),
+    gridDrill: () => this.byId(TEST_IDS.gridDrill),
+    modelTense: (tense: string) => this.byId(TEST_IDS.modelTense(tense)),
+    modelVerb: (verbId: string) => this.byId(TEST_IDS.modelVerb(verbId)),
+    naForm: (tense: string) => this.byId(TEST_IDS.naForm(tense)),
     restoreConfirm: () => this.byId(TEST_IDS.settingsRestoreConfirm),
     settingsMsg: () => this.byId(TEST_IDS.settingsMsg),
     gradeButton: (g: 'again' | 'hard' | 'good') => this.byId(g === 'again' ? TEST_IDS.gradeAgain : g === 'hard' ? TEST_IDS.gradeHard : TEST_IDS.gradeGood),

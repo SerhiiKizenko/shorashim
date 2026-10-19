@@ -1,7 +1,8 @@
-import { BINYAN_LABELS, GRID_COLUMNS, TENSE_LABELS, type Tense, type Verb } from '../../content/schema'
+import { BINYAN_LABELS, clipKey, GRID_COLUMNS, TENSE_LABELS, type Tense, type Verb } from '../../content/schema'
 import type { Grade } from '../../engine/scheduler'
 import { useProgress } from '../../store/progress'
 import { Badge, Card, DraftNote, Sources } from '../components'
+import { FormAudio } from '../FormAudio'
 import { HebrewText, Pointed } from '../hebrew'
 import { ParadigmGrid, type GridOutcome } from '../ParadigmGrid'
 
@@ -14,7 +15,7 @@ export function GridDrill({ verb, tense, today, onDone }: { verb: Verb; tense: T
   const printed = new Set(verb.checkedAgainst.filter((c) => c.tense === tense).flatMap((c) => c.cells))
   const unprinted = Object.keys(cells).filter((c) => !printed.has(c))
   return (
-    <div className="flex flex-col gap-3 pt-2">
+    <div data-testid="grid-drill" data-tense={tense} className="flex flex-col gap-3 pt-2">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="lavender">{BINYAN_LABELS[verb.binyan].en}</Badge>
         <Badge tone="mist">{TENSE_LABELS[tense].en}</Badge>
@@ -38,6 +39,7 @@ export function GridDrill({ verb, tense, today, onDone }: { verb: Verb; tense: T
           cells={cells}
           onCell={(cell, ok) => recordCell(`${verb.id}:${tense}:${cell}`, ok, today)}
           onFinished={(o) => onDone(gradeFromOutcome(o))}
+          audio={verb.audio ? (cell) => <FormAudio verb={verb} clip={clipKey(tense, cell)} /> : undefined}
         />
       </Card>
       <DraftNote status={verb.reviewStatus} flags={unprinted.length ? verb.flags : verb.flags.filter((f) => f !== 'generated')} />

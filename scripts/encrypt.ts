@@ -1,13 +1,13 @@
-// Validates, then encrypts content/*.json into public/data/bundle.enc and the audio tracks into
-// public/data/audio/NN.enc. Key: PBKDF2(TRAINER_PASSPHRASE from .env.local, salt). The salt is kept in
+// Validates, then encrypts content/*.json into public/data/bundle.enc, the audio tracks into
+// public/data/audio/NN.enc and the model verbs' recordings into public/data/forms/<verbId>/<clip>.enc. Key: PBKDF2(TRAINER_PASSPHRASE from .env.local, salt). The salt is kept in
 // public/data/salt.json so a device that cached its derived key keeps working across content updates.
 // Run: pnpm encrypt [--tracks 1-12] (default: every track the bundle lists; --tracks none skips audio)
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { deriveKey, encryptFile, fromHex, PBKDF2_ITERATIONS, randomBytes, SALT_BYTES, syntheticIv, toHex } from '../src/crypto/format'
 import type { Bundle } from '../src/content/schema'
 import { loadContent, readPassphrase } from './lib/content'
-import { AUDIO_DIR, parsePages, PUBLIC_DATA_DIR } from './lib/paths'
+import { AUDIO_DIR, parsePages, PEALIM_DIR, PUBLIC_DATA_DIR } from './lib/paths'
 import { fmtBytes } from './lib/run'
 import { printResult, validateContent } from './validate'
 
@@ -79,6 +79,25 @@ async function main() {
     }
   }
   if (audio.length) console.log(`audio: ${audio.length} track(s), ${fmtBytes(audio.reduce((n, a) => n + a.bytes, 0))}`)
+
+  // The model verbs' recordings (pnpm pealim → MATERIALS_DIR/pealim/<verbId>/<clip>.mp3), ~5 KB each and precached by
+  // the service worker. Always written: the synthetic IV makes a re-run produce the same bytes, so git sees no change.
+  let forms = 0
+  let formBytes = 0
+  for (const v of bundle.verbs) {
+    for (const [clip, file] of Object.entries(v.audio?.clips ?? {})) {
+      const data = new Uint8Array(await readFile(join(PEALIM_DIR, v.id, `${clip}.mp3`)).catch(() => {
+        throw new Error(`${v.id} ${clip}: no recording on disk — run pnpm pealim for this verb first`)
+      }))
+      const encF = await encryptFile(key, data, salt, iterations, await syntheticIv(salt, data))
+      const out = join(PUBLIC_DATA_DIR, file)
+      await mkdir(dirname(out), { recursive: true })
+      await writeFile(out, encF)
+      forms++
+      formBytes += encF.length
+    }
+  }
+  if (forms) console.log(`forms: ${forms} recording(s), ${fmtBytes(formBytes)}`)
 
   const counts: Record<string, { total: number; checked: number }> = {}
   for (const [key, s] of Object.entries(result.stats)) counts[key] = { total: s.vocab.total, checked: s.vocab.checked }

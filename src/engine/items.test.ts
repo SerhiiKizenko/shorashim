@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BundleSchema, EMPTY_BUNDLE, type Bundle } from '../content/schema'
-import { buildMixedCells, filterByFocus, gridItemId, itemsFromBundle, parseItemId, tenseCounts } from './items'
+import { buildMixedCells, filterByFocus, gridItemId, itemsFromBundle, modelGridQueue, modelVerbs, parseItemId, tenseCounts } from './items'
 import { addDays, applyGrade, buildTodayQueue, type ProgressMap } from './scheduler'
 
 const T = '2026-10-09'
@@ -114,5 +114,35 @@ describe('buildMixedCells (interleaved single cells for Today)', () => {
     const stats = { 'v-dbr-piel:future:atem': { right: 1, wrong: 3 } }
     expect(buildMixedCells(items, verbById, progress, stats, T2, 1, () => 0.9)[0]).toMatchObject({ cell: 'atem', label: 'אתם' })
     expect(buildMixedCells(items, verbById, progress, stats, T2, 0, () => 0.9)).toEqual([])
+  })
+})
+
+describe('model verbs', () => {
+  // three model verbs listed out of binyan order, one ordinary verb; general Hebrew forms, one cell each is enough
+  const verb = (id: string, binyan: string, model: boolean, forms: Record<string, Record<string, ReturnType<typeof f>>>) => ({ id, unit: null, book: 'pealim', infinitive: f('x', 'x'), root: 'א.ב.ג', binyan, group: 'shlemim', sources: [{ book: 'pealim', page: 1 }], reviewStatus: 'draft', forms, ...(model ? { model: true } : {}) })
+  const b: Bundle = BundleSchema.parse({
+    ...EMPTY_BUNDLE,
+    verbs: [
+      verb('v-kns-nifal', 'nifal', true, { past: { ani: f('נִכְנַסְתִּי', 'נכנסתי') }, future: { ani: f('אֶכָּנֵס', 'אכנס') } }),
+      verb('v-dbr-piel', 'piel', true, { past: { ani: f('דִּבַּרְתִּי', 'דיברתי') } }),
+      verb('v-ktb-paal', 'paal', false, { past: { ani: f('כָּתַבְתִּי', 'כתבתי') } }),
+      verb('v-lbsh-hitpael', 'hitpael', true, { past: { ani: f('הִתְלַבַּשְׁתִּי', 'התלבשתי') }, future: { ani: f('אֶתְלַבֵּשׁ', 'אתלבש') } }),
+    ],
+  })
+
+  it('lists only the model verbs, in binyan order', () => {
+    expect(modelVerbs(b.verbs).map((v) => v.id)).toEqual(['v-dbr-piel', 'v-lbsh-hitpael', 'v-kns-nifal'])
+  })
+
+  it('a session is one tense across the model verbs; a verb without that tense is left out', () => {
+    expect(modelGridQueue(b.verbs, 'past')).toEqual(['grid:v-dbr-piel:past', 'grid:v-lbsh-hitpael:past', 'grid:v-kns-nifal:past'])
+    expect(modelGridQueue(b.verbs, 'future')).toEqual(['grid:v-lbsh-hitpael:future', 'grid:v-kns-nifal:future'])
+    expect(modelGridQueue(b.verbs, 'imperative')).toEqual([])
+  })
+
+  it('uses the ordinary grid items, whatever the tense focus — so the progress is the one «Today» keeps', () => {
+    const ids = new Set(itemsFromBundle(b).map((i) => i.id))
+    for (const id of modelGridQueue(b.verbs, 'past')) expect(ids.has(id)).toBe(true)
+    expect(filterByFocus(itemsFromBundle(b), ['future']).some((i) => i.id === 'grid:v-dbr-piel:past')).toBe(false)
   })
 })

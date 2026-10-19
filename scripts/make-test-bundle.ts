@@ -1,6 +1,8 @@
 // Builds a tiny dummy bundle for the Playwright smoke test into public/data-test/: twelve vocabulary entries,
-// one verb (לכתוב, ordinary pa'al: future, past, present — general Hebrew, nothing from the book), a grammar
+// one verb (לכתוב, ordinary pa'al: every tense — general Hebrew, nothing from the book or Pealim), a grammar
 // topic and a workbook topic, two exercises (one «sort into the table»), one unit and one 1-second audio track synthesised here. The passphrase is public.
+// לכתוב is also the dummy model verb: its ־נָה forms and three tone clips (infinitive, past אני, future אני) stand in
+// for the Pealim recordings.
 // Deterministic salt and IV so the files are stable in git.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -13,6 +15,8 @@ const SALT_HEX = '73682d746573742d73616c742d303031' // "sh-test-salt-001"
 const ITER = 20_000 // fast; the real bundle uses 210k
 
 const f = (pointed: string, plain: string) => ({ pointed, plain })
+/** the dummy model verb's recordings: a short tone each, a different pitch per clip */
+const CLIPS = ['infinitive', 'past.ani', 'future.ani'] as const
 const bundle: BundleInput = {
   version: 1,
   units: [{ unit: 1, letter: 'א', pages: [8, 17], vocabPage: 8, sections: [{ number: 1, titleHe: 'טקסט לדוגמה', page: 9 }] }],
@@ -38,8 +42,13 @@ const bundle: BundleInput = {
         future: { ani: f('אֶכְתּוֹב', 'אכתוב'), ata: f('תִּכְתּוֹב', 'תכתוב'), at: f('תִּכְתְּבִי', 'תכתבי'), anachnu: f('נִכְתּוֹב', 'נכתוב'), atem: f('תִּכְתְּבוּ', 'תכתבו'), hu: f('יִכְתּוֹב', 'יכתוב'), hi: f('תִּכְתּוֹב', 'תכתוב'), hem: f('יִכְתְּבוּ', 'יכתבו') },
         present: { ms: f('כּוֹתֵב', 'כותב'), fs: f('כּוֹתֶבֶת', 'כותבת'), mp: f('כּוֹתְבִים', 'כותבים'), fp: f('כּוֹתְבוֹת', 'כותבות') },
         past: { ani: f('כָּתַבְתִּי', 'כתבתי'), ata: f('כָּתַבְתָּ', 'כתבת'), at: f('כָּתַבְתְּ', 'כתבת'), anachnu: f('כָּתַבְנוּ', 'כתבנו'), atem: f('כְּתַבְתֶּם', 'כתבתם'), aten: f('כְּתַבְתֶּן', 'כתבתן'), hu: f('כָּתַב', 'כתב'), hi: f('כָּתְבָה', 'כתבה'), hem: f('כָּתְבוּ', 'כתבו') },
+        imperative: { ata: f('כְּתוֹב', 'כתוב'), at: f('כִּתְבִי', 'כתבי'), atem: f('כִּתְבוּ', 'כתבו') },
       },
       checkedAgainst: [{ page: 8, tense: 'future', cells: ['ani', 'ata', 'at', 'anachnu', 'atem', 'hu', 'hi', 'hem'] }],
+      model: true,
+      en: 'to write',
+      naForms: { future: f('תִּכְתּוֹבְנָה', 'תכתובנה'), imperative: f('כְּתוֹבְנָה', 'כתובנה') },
+      audio: { type: 'audio/wav', clips: Object.fromEntries(CLIPS.map((c) => [c, `forms/v-ktb-paal/${c}.enc`])) },
     },
   ],
   grammar: [
@@ -61,16 +70,16 @@ const bundle: BundleInput = {
   audio: [{ track: 1, file: 'audio/01.enc', unit: 1, pages: [9], titleHe: 'טקסט לדוגמה', kind: 'text', seconds: 1 }],
 }
 
-/** 1 s of a 440 Hz tone, 8 kHz mono 16-bit PCM WAV — ~16 KB, plays in every browser. */
-function makeWav(): Uint8Array {
+/** `seconds` of a `hz` tone, 8 kHz mono 16-bit PCM WAV (1 s ≈ 16 KB), plays in every browser. */
+function makeWav(hz = 440, seconds = 1): Uint8Array {
   const rate = 8000
-  const n = rate
+  const n = Math.round(rate * seconds)
   const buf = new ArrayBuffer(44 + n * 2)
   const v = new DataView(buf)
   const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
   str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
   v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true)
-  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 12000), true)
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(Math.sin((2 * Math.PI * hz * i) / rate) * 12000), true)
   return new Uint8Array(buf)
 }
 
@@ -84,9 +93,14 @@ await writeFile(join(dir, 'bundle.enc'), enc)
 const wav = makeWav()
 const encWav = await encryptFile(key, wav, salt, ITER, await syntheticIv(salt, wav))
 await writeFile(join(dir, 'audio', '01.enc'), encWav)
+await mkdir(join(dir, 'forms', 'v-ktb-paal'), { recursive: true })
+for (const [i, clip] of CLIPS.entries()) {
+  const tone = makeWav(523 + 110 * i, 0.4)
+  await writeFile(join(dir, 'forms', 'v-ktb-paal', `${clip}.enc`), await encryptFile(key, tone, salt, ITER, await syntheticIv(salt, tone)))
+}
 await writeFile(join(dir, 'salt.json'), JSON.stringify({ version: 1, salt: SALT_HEX, iterations: ITER }, null, 2) + '\n')
 await writeFile(
   join(dir, 'manifest.json'),
   JSON.stringify({ version: 1, builtAt: '2026-10-09T00:00:00.000Z', bundle: { file: 'bundle.enc', bytes: enc.length }, audio: [{ track: 1, file: 'audio/01.enc', bytes: encWav.length, type: 'audio/wav' }], counts: { u1: { total: 12, checked: 11 }, verbs: { total: 1, checked: 1 }, exercises: { total: 1, checked: 1 }, workbook: { total: 2, checked: 0 } } }, null, 2) + '\n',
 )
-console.log(`test bundle: ${bundle.vocab.length} vocab, 1 verb, 2 exercises (one in the workbook), 1 WAV track → public/data-test/`)
+console.log(`test bundle: ${bundle.vocab.length} vocab, 1 verb (a model verb, ${CLIPS.length} clips), 2 exercises (one in the workbook), 1 WAV track → public/data-test/`)

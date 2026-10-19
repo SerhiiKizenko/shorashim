@@ -6,12 +6,14 @@ import { GrammarTopicScreen } from './ui/GrammarTopic'
 import { Help } from './ui/Help'
 import { Home } from './ui/Home'
 import { Listen } from './ui/Listen'
+import { ModelVerbs } from './ui/ModelVerbs'
 import { Lock } from './ui/Lock'
 import { Onboarding } from './ui/Onboarding'
 import { Settings } from './ui/Settings'
 import { Study } from './ui/Study'
 import { UnitScreen } from './ui/UnitScreen'
 import { Units } from './ui/Units'
+import { VerbTable } from './ui/VerbTable'
 import { Verbs } from './ui/Verbs'
 import { Weak } from './ui/Weak'
 
@@ -42,6 +44,8 @@ function Gate() {
       <Route path="/" element={<Home />} />
       <Route path="/study/:mode" element={<StudyRoute />} />
       <Route path="/verbs" element={<Verbs />} />
+      <Route path="/model" element={<ModelVerbs />} />
+      <Route path="/model/:verbId" element={<VerbTable />} />
       <Route path="/units" element={<Units />} />
       <Route path="/units/:unit" element={<UnitScreen />} />
       <Route path="/grammar/:id" element={<GrammarTopicScreen />} />

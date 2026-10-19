@@ -9,7 +9,8 @@ import { Badge, Button, Card, Screen } from './components'
 import { HebrewText } from './hebrew'
 import { TenseFocus } from './TenseFocus'
 
-function Status({ verb, tense }: { verb: Verb; tense: Tense }) {
+/** A grid's state as a dot: not started · weak · in progress · mastered. */
+export function Status({ verb, tense }: { verb: Verb; tense: Tense }) {
   const p = useProgress((s) => s.progress[gridItemId(verb.id, tense)])
   const cls = !p ? 'bg-surface-2' : isWeak(p) ? 'bg-bad' : p.box < MASTERED_BOX ? 'bg-sage' : 'bg-ok'
   const title = !p ? 'not started' : isWeak(p) ? 'weak' : p.box < MASTERED_BOX ? `box ${p.box}` : 'mastered'
@@ -29,6 +30,11 @@ export function Verbs() {
   return (
     <Screen title="Verbs" back="/" footer={count ? <Link to="/study/topic?kind=grid" className="block"><Button data-testid="verbs-drill-all" className="w-full">Drill all grids ({count})</Button></Link> : undefined}>
       <div className="flex flex-col gap-4 pt-2">
+        {verbs.some((v) => v.model) ? (
+          <Link to="/model" data-testid="verbs-model" className="flex min-h-11 items-center justify-between rounded-2xl bg-surface-2 px-4 py-2 text-sm font-semibold active:opacity-80">
+            Model verbs · one per binyan, every tense <span aria-hidden>→</span>
+          </Link>
+        ) : null}
         <Card><TenseFocus compact /></Card>
         {count ? (
           <div className="grid grid-cols-3 gap-2">

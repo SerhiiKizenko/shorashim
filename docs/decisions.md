@@ -112,3 +112,8 @@ entries below are what this session added or made concrete.
   that Pealim prints clears `generated`. Workbook prints stay out of both rules (their pointing is partial by design).
 - **2026-10-19 — The model verbs carry Pealim's English gloss (`en`)** — Serhii: «better to stick to English». The book's
   Russian stays wherever the book prints one.
+- **2026-10-19 — The model verbs' recordings are encrypted per form and precached.** `public/data/forms/<verbId>/<clip>.enc`
+  (108 files, 588 KB) with a synthetic IV, so `pnpm encrypt` rewrites identical bytes (checked: all 108 the same after a
+  re-run). Small enough to precache, so every form plays in airplane mode; the book's tracks stay runtime-cached.
+- **2026-10-19 — In a grid the recording appears only after «Check»** (it would say the answer); in the read-only table it
+  is always there. One shared `<audio>` plays the clips, so a new tap stops the last one.

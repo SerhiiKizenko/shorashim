@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, ChevronRight, Headphones, Settings as SettingsIcon, Sun, Table2 } from 'lucide-react'
+import { AlertTriangle, BookOpen, ChevronRight, Headphones, Layers, Settings as SettingsIcon, Sun, Table2 } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { TENSE_LABELS } from '../content/schema'
@@ -109,7 +109,8 @@ export function Home() {
           </Card>
         </Link>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <ModeTile to="/model" icon={<Layers />} title="Model verbs" hint="one per binyan, every tense" testId="home-model" />
           <ModeTile to="/units" icon={<BookOpen />} title="Units" hint="vocabulary, grammar, exercises" testId="home-units" />
           <ModeTile to="/weak" icon={<AlertTriangle />} title="Weak spots" hint="what keeps failing" testId="home-weak" />
           <ModeTile to="/listen" icon={<Headphones />} title="Listen" hint="the book's recordings" testId="home-listen" />

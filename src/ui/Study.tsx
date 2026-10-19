@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { TENSES, type Bundle, type Tense } from '../content/schema'
+import { TENSE_LABELS, TENSES, type Bundle, type Tense } from '../content/schema'
 import type { ErrorClass } from '../engine/answer'
 import { answeredOn } from '../engine/habit'
-import { buildMixedCells, exerciseItemId, filterByFocus, gridItemId, isTopicItem, parseItemId, topicItemIds } from '../engine/items'
+import { buildMixedCells, exerciseItemId, filterByFocus, gridItemId, isTopicItem, modelGridQueue, parseItemId, topicItemIds } from '../engine/items'
 import { buildExtraNewQueue, buildTodayQueue, buildTopicQueue, buildWeakQueue, countDue, currentCard, dueForecast, gradeInSession, isCatchUp, isFinished, newAllowance, remaining, shouldPersistGrade, startSession, toDateString, vocabMode, type Grade, type ProgressMap, type SchedItem } from '../engine/scheduler'
 import { useContent } from '../store/content'
 import { useProgress, type Settings } from '../store/progress'
@@ -13,7 +13,7 @@ import { GridDrill } from './drills/GridDrill'
 import { CellCard, FormsPractice, WhichPractice } from './drills/Practice'
 import { VocabDrill } from './drills/VocabDrill'
 
-const MODE_TITLES: Record<string, string> = { today: 'Today', topic: 'Unit / topic', weak: 'Weak spots', grid: 'Paradigm grid', exercise: 'Exercise', extra: 'More new', forms: 'One form', build: 'Build from root', which: 'Which form?' }
+const MODE_TITLES: Record<string, string> = { today: 'Today', topic: 'Unit / topic', weak: 'Weak spots', grid: 'Paradigm grid', exercise: 'Exercise', extra: 'More new', forms: 'One form', build: 'Build from root', which: 'Which form?', model: 'Model verbs' }
 
 function buildQueue(mode: string, params: URLSearchParams, items: SchedItem[], progress: ProgressMap, settings: Settings, today: string, bundle: Bundle): string[] {
   const focused = filterByFocus(items, settings.tenseFocus)
@@ -43,6 +43,11 @@ function buildQueue(mode: string, params: URLSearchParams, items: SchedItem[], p
       const id = params.get('id')
       return id ? [exerciseItemId(id)] : []
     }
+    case 'model': {
+      // one tense across the model verbs, every tense allowed (the focus does not apply here)
+      const tense = params.get('tense') as Tense | null
+      return tense && (TENSES as readonly string[]).includes(tense) ? modelGridQueue(bundle.verbs, tense) : []
+    }
     default:
       return []
   }
@@ -60,7 +65,10 @@ export function Study() {
   const grade = useProgress((s) => s.grade)
   const focus = useProgress((s) => s.settings.tenseFocus)
   const today = toDateString(new Date())
-  const title = MODE_TITLES[mode] ?? 'Study'
+  const modelTense = mode === 'model' ? (params.get('tense') as Tense | null) : null
+  const title = modelTense && TENSE_LABELS[modelTense] ? `Model verbs · ${TENSE_LABELS[modelTense].en}` : (MODE_TITLES[mode] ?? 'Study')
+  // a model-verbs session returns to its section
+  const home = mode === 'model' ? { to: '/model', label: 'Model verbs' } : { to: '/', label: 'Home' }
 
   // Everything decided when the session begins: the queue, the mixed cells that follow «Today», how many answers
   // today already holds, and a snapshot of the progress — a card asks the way the item stood at the start, so a
@@ -121,13 +129,13 @@ export function Study() {
 
   if (session.queue.length === 0 && mixed.length === 0)
     return (
-      <Screen title={title} back="/">
+      <Screen title={title} back={home.to}>
         <Card className="mt-4 flex flex-col items-center gap-4 text-center">
           <p className="text-lg font-semibold">Nothing here</p>
           <p className="text-ink-muted">{mode === 'today' ? 'All done for today. Take more new items, open a unit, or drill the verbs.' : 'Nothing to show in this mode yet.'}</p>
           {forecast ? <div className="w-full text-left">{forecast}</div> : null}
           {moreNewButton}
-          <Link to="/"><Button variant="secondary">Home</Button></Link>
+          <Link to={home.to}><Button variant="secondary">{home.label}</Button></Link>
         </Card>
       </Screen>
     )
@@ -156,14 +164,14 @@ export function Study() {
 
   if (mainDone)
     return (
-      <Screen title={title} back="/">
+      <Screen title={title} back={home.to}>
         <Card data-testid="study-finished" className="mt-4 flex flex-col items-center gap-4 text-center">
           <p className="text-2xl font-bold">Done</p>
           <p className="text-ink-muted">Items completed: {session.done}</p>
           {mixed.length ? <p className="text-ink-muted">Mixed cells: {mixedRight} of {mixed.length} right</p> : null}
           {forecast ? <div className="w-full text-left">{forecast}</div> : null}
           {moreNewButton}
-          <Link to="/"><Button>Home</Button></Link>
+          <Link to={home.to}><Button>{home.label}</Button></Link>
         </Card>
       </Screen>
     )
@@ -187,7 +195,7 @@ export function Study() {
   if (!body) body = <Card className="mt-4 text-center text-ink-muted">This item is missing from the materials — skipping.</Card>
 
   return (
-    <Screen title={title} back="/" right={<span data-testid="study-remaining" className="text-sm text-ink-muted">{remaining(session)} left</span>}>
+    <Screen title={title} back={home.to} right={<span data-testid="study-remaining" className="text-sm text-ink-muted">{remaining(session)} left</span>}>
       {bar}
       {body}
       {!body || (parsed.kind === 'prep') ? <Button className="mt-3 w-full" onClick={() => onDone('good')}>Skip</Button> : null}

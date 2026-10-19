@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { KTOV_FUTURE, TrainerDriver } from './drivers/trainer.driver'
+import { KTOV_FUTURE, KTOV_GRID, TrainerDriver } from './drivers/trainer.driver'
 
 const PASSPHRASE = 'test-passphrase' // dummy bundle in public/data-test, see scripts/make-test-bundle.ts
 
@@ -331,5 +331,45 @@ test.describe('smoke (phone)', () => {
     await t.when.studyTopic()
     await expect(t.get.remaining()).toContainText('3 left')
   })
-})
 
+  // ------------------------------------------------------------ model verbs (one per binyan, every tense)
+  test('model verbs: a tense session runs whatever the focus; the recording plays only after Check and the grade is kept; the table shows ־נָה apart and plays offline', async ({ page }) => {
+    const t = new TrainerDriver(page)
+    await t.given.openedWithTestBundle()
+    await t.when.unlock(PASSPHRASE, true)
+    await t.when.finishOnboarding() // the focus is Future only
+    await t.when.openModelVerbs()
+    await expect(t.get.modelVerb('v-ktb-paal')).toContainText('to write')
+    await expect(t.get.modelTense('past')).toContainText('0 due · 1 new')
+
+    // Past, although the focus is Future: one grid per model verb (the dummy has one)
+    await t.when.startModelTense('past')
+    await expect(t.get.remaining()).toContainText('1 left')
+    await expect(t.get.gridDrill()).toHaveAttribute('data-tense', 'past')
+    await expect(t.get.formAudioButton('past.ani')).toHaveCount(0) // the recording would give the answer away
+    await t.when.fillGrid(KTOV_GRID.past!)
+    await t.when.checkGrid()
+    await t.when.playForm('past.ani')
+    await expect(t.get.formAudio()).toHaveAttribute('src', /^blob:/)
+    await t.when.continueAfterGrid()
+    await expect(t.get.finished()).toBeVisible()
+    expect(await t.get.progressOf('grid:v-ktb-paal:past')).toMatchObject({ box: 2, lastGrade: 'good' })
+
+    // The table: every tense, ־נָה under future and imperative only, each form playable
+    await t.when.goHome()
+    await t.when.openModelVerbs()
+    await expect(t.get.modelTense('past')).toContainText('0 due · 0 new')
+    await t.when.openModelVerb('v-ktb-paal')
+    await expect(t.get.naForm('future')).toContainText('תכתובנה')
+    await expect(t.get.naForm('imperative')).toContainText('כתובנה')
+    await expect(t.get.naForm('past')).toHaveCount(0)
+
+    // The recordings are precached with the bundle: after an offline reload a clip still decrypts and plays
+    await t.given.serviceWorkerReady()
+    await t.given.offline()
+    await t.given.reloaded()
+    await t.when.playForm('infinitive')
+    await expect(t.get.formAudio()).toHaveAttribute('src', /^blob:/)
+    await t.given.online()
+  })
+})

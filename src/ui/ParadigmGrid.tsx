@@ -14,7 +14,9 @@ export interface GridOutcome {
   gaveUp: boolean
 }
 
-export function ParadigmGrid({ heading, columns, cells, onCell, onFinished }: { heading: ReactNode; columns: GridColumn[]; cells: Record<string, HebrewForm>; onCell?: (cell: string, ok: boolean) => void; onFinished: (o: GridOutcome) => void }) {
+/** `audio(cell)`: a play button for the cell's recording, shown once the row is checked (never before: it would say
+ * the answer). */
+export function ParadigmGrid({ heading, columns, cells, onCell, onFinished, audio }: { heading: ReactNode; columns: GridColumn[]; cells: Record<string, HebrewForm>; onCell?: (cell: string, ok: boolean) => void; onFinished: (o: GridOutcome) => void; audio?: (cell: string) => ReactNode }) {
   const [values, setValues] = useState<string[]>(() => columns.map(() => ''))
   const [results, setResults] = useState<(CheckResult | null)[]>(() => columns.map(() => null))
   const [round, setRound] = useState(0)
@@ -81,6 +83,7 @@ export function ParadigmGrid({ heading, columns, cells, onCell, onFinished }: { 
                   readOnly={!!res?.ok}
                   enterKeyHint={r === rows[rows.length - 1] ? 'done' : 'next'}
                 />
+                {res && audio ? audio(r.cell) : null}
               </div>
               {res && !res.ok ? (
                 <p data-testid={`grid-feedback-${r.i}`} dir="rtl" className="pr-1 text-right text-sm text-ink-muted">

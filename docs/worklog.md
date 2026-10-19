@@ -230,3 +230,25 @@ infinitive (the flag comes from p.50's «Infinitive derived from the root»).
 
 **Next (chunk 2)**: encrypt the recordings (`public/data/forms/`, synthetic IV) + precache; the «Model verbs» screen,
 tense sessions (`/study/model?tense=`), the read-only table with 🔊 and the ־נָה line, 🔊 after Check; dummy bundle + e2e.
+
+**Done (chunk 2, the section)** — commit 8dee6c9 deployed chunk 1 (Serhii's go-ahead; run 39289811819, live manifest
+checked). Then:
+- `modelVerbs` / `modelGridQueue` (`src/engine/items.ts`, 3 tests); Study mode `model` (`/study/model?tense=`, back
+  and finish lead to the section); `ModelVerbs` (`/model`: four tense tiles with status dots and due/new, the verb
+  cards); `VerbTable` (`/model/:verbId`: every tense in the grid's rows, pointed + plain + 🔊, ־נָה greyed with the
+  note); `FormAudio` (shared hidden `<audio>`); 🔊 in `ParadigmGrid` after «Check»; Home tile (2 × 2), Verbs link.
+- `pnpm encrypt` writes `public/data/forms/` (108 clips, 588 KB, identical bytes on a re-run); precached (138 entries).
+- Dummy bundle: לכתוב is the model verb (imperative, ־נָה, 3 tone clips). Driver: `KTOV_GRID`, a tense-aware
+  `passCurrentCard`, model-verb steps; scenario: a past session under a Future-only focus, 🔊 hidden before «Check»,
+  the grade kept, the table's ־נָה lines, a clip played after an offline reload.
+- Chrome drive at 390 px (dummy): tiles, table, session, 🔊, Hard → box 1 due tomorrow, no console errors. Fixed from
+  the drive: the tile dots were invisible (tile = dot colour); the table's present labels wrapped with a leading «/».
+
+- Fixed in the driver: `given.serviceWorkerReady` never waited — `waitForFunction` does not await an async predicate
+  (the Promise counts as truthy; proved: `async () => false` resolved in 49 ms). The 108 precached clips made the
+  install ~1.7 s and the offline test lost the race on both engines; now `expect.poll` over `page.evaluate`.
+
+**Tests**: vitest 103, Playwright 22 (both projects); the offline tests 20 of 20 at `--repeat-each=5`.
+
+**Finding (not fixed)**: the grid drill's present labels wrap with a leading «/» at 390 px («אנחנו / אתן» + «/ הן»,
+`ParadigmGrid`); the table's no-break-space fix applies there too.
